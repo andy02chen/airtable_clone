@@ -1,10 +1,13 @@
 TODO
 
 [X] Create DB
-[ ] Google Auth
+[X] Google Auth
+
+[ ] Side Panel
+[ ] Top Panel
 
 [ ] Use the TanStack table library for the table UIs.
-[ ] Use PostgreSQL for DB.
+[X] Use PostgreSQL for DB.
 [ ] Just focus on the main page with table, columns, and cells.
 [ ] UI needs to give the illusion that it’s Airtable, however, doesn’t need to match 1:1
 [ ] Be able to log in via Google and create bases.

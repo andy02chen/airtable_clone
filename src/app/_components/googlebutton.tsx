@@ -5,7 +5,7 @@ export default function GoogleButton() {
   return (
     <button
       onClick={() => signIn("google")}
-      className="flex items-center gap-3 px-4 py-2 border rounded shadow hover:shadow-md transition"
+      className="flex items-center gap-3 px-4 py-2 border rounded shadow hover:shadow-md transition cursor-pointer"
     >
       <img
         src="https://developers.google.com/identity/images/g-logo.png"

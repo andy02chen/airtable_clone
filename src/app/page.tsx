@@ -8,15 +8,15 @@ export default function Home() {
 
   if (!session) {
     return (
-      <main style={{ padding: 20 }}>
+      <main className="h-screen w-screen flex items-center justify-center">
         <GoogleButton />
       </main>
     );
   }
 
   return (
-    <main style={{ padding: 20 }}>
-      <p>Welcome, {session.user?.email}</p>
+    <main className="">
+      <p>Welcome, {session.user?.name}</p>
     </main>
   );
 }
