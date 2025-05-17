@@ -1,29 +1,26 @@
-# Create T3 App
+TODO
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+[X] Create DB
+[ ] Google Auth
 
-## What's next? How do I make an app with this?
-
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
-
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
-
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
-
-## Learn More
-
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
-
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
-
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
-
-## How do I deploy this?
-
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+[ ] Use the TanStack table library for the table UIs.
+[ ] Use PostgreSQL for DB.
+[ ] Just focus on the main page with table, columns, and cells.
+[ ] UI needs to give the illusion that it’s Airtable, however, doesn’t need to match 1:1
+[ ] Be able to log in via Google and create bases.
+[ ] In each base, I can create tables.
+[ ] Be able to dynamically add columns.
+[ ] Text and Number type columns are fine for now
+[ ] Editing cells, and tabbing across everything should be smooth
+[ ] Creating a new table will show default rows and columns. User fakerjs for data
+[ ] I want to see a table w/ 100k rows and scroll down without lag
+[ ] Add a button I can click that will add 100k rows to my table.
+[ ] Implement virtualized infinite scroll using TRPC’s hooks and TanStack virtualizer
+[ ] I want to be able to search across all the cells
+[ ] I want to be able to create a 'view' of a table and save the following configurations
+[ ] Filters on columns: for both numbers (greater than, smaller than) and text (is not empty, is empty, contains, not contains, equal to)
+[ ] Simple sorting on columns: for text A→Z, Z→A, for numbers, do decreasing or increasing
+[ ] Can search through and hide/show columns.
+[ ] Search, filter, and sort have to be done at the database level
+[ ] Make sure there's a loading state
+[ ] The ultimate goal - if there are 1m rows, it can still load without an issue!
