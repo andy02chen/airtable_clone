@@ -3,7 +3,7 @@ TODO
 [X] Create DB
 [X] Google Auth
 
-[ ] Side Panel
+[ ] Side Panel display bases
 [ ] Top Panel search bar
 
 [ ] Use the TanStack table library for the table UIs.
