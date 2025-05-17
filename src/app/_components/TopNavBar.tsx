@@ -78,9 +78,9 @@ export default function TopNavBar({ showSidePanel, setShowSidePanel } : TopNavBa
         {isOpen && (
           <div ref={dropdownRef} className="fixed right-0 top-10 w-36 bg-white border rounded shadow-md z-50">
             <button
-              onClick={() => {
+              onClick={async () => {
                 setIsOpen(false);
-                signOut();
+                await signOut();
               }}
               className="block w-full text-left px-4 py-2 hover:bg-gray-100 rounded cursor-pointer"
             >

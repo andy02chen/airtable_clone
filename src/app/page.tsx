@@ -1,7 +1,7 @@
 'use client'
 
-import { useSession, signOut } from "next-auth/react";
-import { useState, useRef } from "react";
+import { useSession } from "next-auth/react";
+import { useState } from "react";
 import GoogleButton from "~/app/_components/googlebutton";
 import TopNavBar from "./_components/TopNavBar";
 
