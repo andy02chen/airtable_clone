@@ -25,7 +25,7 @@ export default function RootLayout({
     <html lang="en" className={`${geist.variable}`}>
       <body className="min-h-screen w-full">
         <Providers>
-          <TopNavBar/>
+          {/* <TopNavBar/> */}
           {children}
         </Providers>
       </body>
