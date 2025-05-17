@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useState } from "react";
-import GoogleButton from "app/_components/googlebutton";
+import GoogleButton from "./_components/googlebutton";
 import TopNavBar from "./_components/TopNavBar";
 
 export default function Home() {

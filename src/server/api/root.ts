@@ -1,5 +1,5 @@
 // import { postRouter } from "~/server/api/routers/post";
-import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
+import { createCallerFactory, createTRPCRouter } from "~/src/server/api/trpc";
 import { baseRouter } from "./routers/base";
 
 /**
