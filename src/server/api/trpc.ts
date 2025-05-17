@@ -14,6 +14,18 @@ import { ZodError } from "zod";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 
+interface SessionUser {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  // Add any other user properties you expect
+}
+
+interface Session {
+  user?: SessionUser;
+}
+
 /**
  * 1. CONTEXT
  *
@@ -28,10 +40,10 @@ import { db } from "~/server/db";
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth();
-
+  
   return {
     db,
-    session,
+    session: session as unknown as Session | null,
     ...opts,
   };
 };
