@@ -1,25 +1,70 @@
 import { api } from "~/src/trpc/react";
 import { toast } from "sonner";
+import { useState } from "react";
 
 export default function CreateBase() {
   const utils = api.useUtils();
 
   const createBase = api.base.create.useMutation();
 
+  const [baseName, setBaseName] = useState("Untitled Base");
+  const [showInput, setShowInput] = useState(false);
+
   return(
-    <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer"
-      onClick={async () => {
-      try {
-        await createBase.mutateAsync({ name: "test" });
-        await utils.base.list.invalidate();
-        toast.success("Base created successfully!");
-      } catch (error) {
-        toast.error(`Failed to create base`);
-        console.error("Creation error:", error);
+    <div className="gap-4 flex">
+      {!showInput ?
+        (
+          <button
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer"
+            onClick={() => setShowInput(true)}
+          >
+            Create Base
+          </button>
+        )
+        :
+        (
+          <div className="flex gap-2">
+        <input
+          type="text"
+          className="bg-white border-black border-2 px-2"
+          value={baseName}
+          onChange={(e) => setBaseName(e.target.value)}
+          autoFocus
+          onFocus={(e) => e.target.select()} 
+        />
+        <button
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer"
+          onClick={async () => {
+            try {
+              if (!baseName.trim()) {
+                toast.error("Please enter a base name");
+                return;
+              }
+              await createBase.mutateAsync({ name: baseName });
+              await utils.base.list.invalidate();
+              toast.success("Base created successfully!");
+              setBaseName("Untitled Base");
+              setShowInput(false);
+            } catch (error) {
+              toast.error(`Failed to create base`);
+              console.error("Creation error:", error);
+            }
+          }}
+        >
+          Confirm
+        </button>
+        <button
+          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer"
+          onClick={() => {
+            setShowInput(false);
+            setBaseName("Untitled Base");
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+        )
       }
-  }}
-    >
-      Create Base
-    </button>
+    </div>
   );
 }
