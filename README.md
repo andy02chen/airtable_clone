@@ -1,24 +1,31 @@
 TODO
 
+[ ] Just focus on the main page with table, columns, and cells.
+
+OPTIONAL IG
+[ ] Side Panel display bases
+
+DO NEXT
+[ ] Route when open the table
+[ ] UI for opening table
+[ ] CLick on Base to open the tables
+
+
 [X] Create DB
 [X] Google Auth
 
 [X] Vercel Deployment
 
-[ ] Side Panel display bases
 [ ] Top Panel search bar
 
 [X] See new bases
-[ ] Be able to create bases.
-[ ] Give new base name
-
-[ ] Toast base creation maybe?
+[X] Be able to create bases.
+[X] Give new base name
 
 [ ] Use the TanStack table library for the table UIs.
 [X] Use PostgreSQL for DB.
-[ ] Just focus on the main page with table, columns, and cells.
-[ ] UI needs to give the illusion that it’s Airtable, however, doesn’t need to match 1:1
 
+[ ] UI needs to give the illusion that it’s Airtable, however, doesn’t need to match 1:1
 [ ] In each base, I can create tables.
 [ ] Be able to dynamically add columns.
 [ ] Text and Number type columns are fine for now

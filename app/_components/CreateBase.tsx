@@ -10,6 +10,8 @@ export default function CreateBase() {
   const [baseName, setBaseName] = useState("Untitled Base");
   const [showInput, setShowInput] = useState(false);
 
+  const [submitting, setSubmitting] = useState(false);
+
   return(
     <div className="gap-4 flex">
       {!showInput ?
@@ -33,11 +35,19 @@ export default function CreateBase() {
           onFocus={(e) => e.target.select()} 
         />
         <button
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer"
+          className={`px-4 py-2 text-white rounded cursor-pointer ${
+            submitting
+              ? 'bg-blue-400 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600'
+          }`}
           onClick={async () => {
+            if (submitting) return;
+
+            setSubmitting(true);
             try {
               if (!baseName.trim()) {
                 toast.error("Please enter a base name");
+                setSubmitting(false);
                 return;
               }
               await createBase.mutateAsync({ name: baseName });
@@ -48,10 +58,12 @@ export default function CreateBase() {
             } catch (error) {
               toast.error(`Failed to create base`);
               console.error("Creation error:", error);
+            } finally {
+              setSubmitting(false);
             }
           }}
         >
-          Confirm
+          {submitting ? 'Creating...' : 'Confirm'}
         </button>
         <button
           className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer"
@@ -59,6 +71,7 @@ export default function CreateBase() {
             setShowInput(false);
             setBaseName("Untitled Base");
           }}
+          disabled = {submitting}
         >
           Cancel
         </button>
