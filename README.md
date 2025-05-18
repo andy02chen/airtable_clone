@@ -7,9 +7,10 @@ TODO
 
 [ ] Side Panel display bases
 [ ] Top Panel search bar
-[ ] Be able to create bases.
-[ ] See new bases
 
+[ ] See new bases
+[ ] Be able to create bases.
+[ ] Give new base name
 
 [ ] Use the TanStack table library for the table UIs.
 [X] Use PostgreSQL for DB.

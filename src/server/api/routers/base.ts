@@ -20,4 +20,12 @@ export const baseRouter = createTRPCRouter({
 
       return base;
     }),
+
+    list: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    return await ctx.db.base.findMany({
+      where: { userId }
+    });
+  }),
 });

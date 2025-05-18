@@ -39,9 +39,7 @@ interface Session {
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const session = await getAuthSession(); // ✅ clean session object
-
-  console.log("Session in TRPC Context:", session);
+  const session = await getAuthSession();
   
   return {
     db,
