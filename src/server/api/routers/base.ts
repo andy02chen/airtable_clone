@@ -9,7 +9,6 @@ export const baseRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      console.log("Session in base.create:", ctx.session);
       const userId = ctx.session.user.id;
 
       const base = await ctx.db.base.create({

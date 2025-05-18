@@ -3,6 +3,7 @@ import { cache } from "react";
 import { authConfig } from "./config";
 import { signIn as nextAuthSignIn } from "next-auth/react";
 import type { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth"; 
 
 type NextAuthReturnType = {
   auth: () => Promise<void>;
@@ -11,10 +12,12 @@ type NextAuthReturnType = {
   signOut: () => Promise<void>;
 };
 
-const nextAuthResult = NextAuth(authConfig) as NextAuthReturnType;
+const nextAuthResult = NextAuth(authConfig);
 
-const { auth: uncachedAuth, handlers, signIn, signOut } = nextAuthResult;
+const { auth: authMiddleware, handlers, signIn, signOut } = nextAuthResult;
 
-const auth = cache(uncachedAuth);
+async function getAuthSession() {
+  return getServerSession(authConfig); // ✅ Clean session object or null
+}
 
-export { auth, handlers, signIn, signOut };
+export { getAuthSession, authMiddleware as auth, handlers, signIn, signOut };

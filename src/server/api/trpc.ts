@@ -11,7 +11,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
-import { auth } from "~/src/server/auth";
+import { auth, getAuthSession } from "~/src/server/auth";
 import { db } from "~/src/server/db";
 
 interface SessionUser {
@@ -39,7 +39,9 @@ interface Session {
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const session = await auth();
+  const session = await getAuthSession(); // ✅ clean session object
+
+  console.log("Session in TRPC Context:", session);
   
   return {
     db,

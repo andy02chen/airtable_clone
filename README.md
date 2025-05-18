@@ -7,12 +7,15 @@ TODO
 
 [ ] Side Panel display bases
 [ ] Top Panel search bar
+[ ] Be able to create bases.
+[ ] See new bases
+
 
 [ ] Use the TanStack table library for the table UIs.
 [X] Use PostgreSQL for DB.
 [ ] Just focus on the main page with table, columns, and cells.
 [ ] UI needs to give the illusion that it’s Airtable, however, doesn’t need to match 1:1
-[ ] Be able to create bases.
+
 [ ] In each base, I can create tables.
 [ ] Be able to dynamically add columns.
 [ ] Text and Number type columns are fine for now
