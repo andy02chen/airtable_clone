@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getAuthSession } from "~/src/server/auth";
 import { db } from "~/src/server/db";
 
-export default async function BasePage({ params }: { params: { id: string } }) {
+export default async function BasePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getAuthSession();
 
   if (!session?.user) {

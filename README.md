@@ -6,10 +6,7 @@ OPTIONAL IG
 [ ] Side Panel display bases
 
 DO NEXT
-[ ] Route when open the table
-[ ] UI for opening table
-[ ] CLick on Base to open the tables
-
+[ ] UI when open base
 
 [X] Create DB
 [X] Google Auth
