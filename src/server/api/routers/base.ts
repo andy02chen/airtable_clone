@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "~/src/server/api/trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/src/server/api/trpc";
 
 export const baseRouter = createTRPCRouter({
   create: protectedProcedure
@@ -28,4 +28,18 @@ export const baseRouter = createTRPCRouter({
       where: { userId }
     });
   }),
+
+  getById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input, ctx }) => {
+      const base = await ctx.db.base.findUnique({
+        where: { id: input.id },
+      });
+
+      if (!base || base.userId !== ctx.session.user.id) {
+        return null;
+      }
+
+      return base;
+    }),
 });
