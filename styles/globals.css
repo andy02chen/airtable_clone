@@ -1,1 +1,25 @@
 @import "tailwindcss";
+
+:root {
+  --base-color-0: #3b82f6;
+  --base-color-1: #ef4444;
+  --base-color-2: #10b981;
+  --base-color-3: #f59e0b;
+  --base-color-4: #8b5cf6;
+  --base-color-5: #ec4899;
+  --base-color-6: #14b8a6;
+  --base-color-7: #f97316;
+  --base-color-8: #6366f1;
+  --base-color-9: #84cc16;
+}
+
+.base-color-0 { background-color: var(--base-color-0); }
+.base-color-1 { background-color: var(--base-color-1); }
+.base-color-2 { background-color: var(--base-color-2); }
+.base-color-3 { background-color: var(--base-color-3); }
+.base-color-4 { background-color: var(--base-color-4); }
+.base-color-5 { background-color: var(--base-color-5); }
+.base-color-6 { background-color: var(--base-color-6); }
+.base-color-7 { background-color: var(--base-color-7); }
+.base-color-8 { background-color: var(--base-color-8); }
+.base-color-9 { background-color: var(--base-color-9); }

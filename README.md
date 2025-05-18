@@ -3,7 +3,7 @@ TODO
 [X] Create DB
 [X] Google Auth
 
-[ ] Vercel Deployment
+[X] Vercel Deployment
 
 [ ] Side Panel display bases
 [ ] Top Panel search bar

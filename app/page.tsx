@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import GoogleButton from "./_components/googlebutton";
 import TopNavBar from "./_components/TopNavBar";
+import Dashboard from "./_components/Dashboard";
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -30,9 +31,7 @@ export default function Home() {
               </div>
           }
         </div>
-        <div className="flex-1 p-4 overflow-y-auto">
-          <h1>Home</h1>
-        </div>
+        <Dashboard/>
       </div>
     </main>
   );
