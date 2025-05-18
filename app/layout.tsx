@@ -4,6 +4,7 @@ import { type Metadata } from "next";
 import { Geist } from "next/font/google";
 
 import { Providers } from "./Providers";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "AirTable Clone",
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body className="min-h-screen w-full">
         <Providers>
           {children}
+          <Toaster />
         </Providers>
       </body>
     </html>

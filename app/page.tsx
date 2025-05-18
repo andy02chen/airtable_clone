@@ -1,7 +1,7 @@
 'use client'
 
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import GoogleButton from "./_components/googlebutton";
 import TopNavBar from "./_components/TopNavBar";
 import Dashboard from "./_components/Dashboard";
@@ -30,7 +30,7 @@ export default function Home() {
 
   return (
     <main className="flex flex-col h-screen">
-      <TopNavBar showSidePanel={showSidePanel} setShowSidePanel={setShowSidePanel} />
+      <TopNavBar setShowSidePanel={setShowSidePanel} />
       <div className="flex flex-1 overflow-hidden">
         <div className={`bg-white border-r border-gray-300 shadow overflow-hidden transition-[width] duration-300 ease-in-out ${
           showSidePanel ? "w-64" : "w-0"}`}>

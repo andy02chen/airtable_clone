@@ -1,7 +1,9 @@
+// import type { NextAuthOptions } from "next-auth";
+// import type { NextApiHandler } from "next";
 import NextAuth from "next-auth";
-import { authOptions } from "./authOptions";
-import type { NextRequest, NextResponse } from "next/server";
+import { authConfig } from "~/src/server/auth/config";
 
-const handler = NextAuth(authOptions) as (req: NextRequest) => Promise<NextResponse>;
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const handler = NextAuth(authConfig);
 
 export { handler as GET, handler as POST };

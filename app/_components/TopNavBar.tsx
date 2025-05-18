@@ -7,11 +7,10 @@ import Image from 'next/image'
 import { useState, useRef, useEffect } from "react";
 
 type TopNavBarProps = {
-  showSidePanel: boolean;
   setShowSidePanel: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-export default function TopNavBar({ showSidePanel, setShowSidePanel } : TopNavBarProps) {
+export default function TopNavBar({ setShowSidePanel } : TopNavBarProps) {
   const { data: session, status } = useSession();
 
   const [isOpen, setIsOpen] = useState(false);
