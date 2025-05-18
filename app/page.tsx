@@ -1,17 +1,26 @@
 'use client'
 
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import GoogleButton from "./_components/googlebutton";
 import TopNavBar from "./_components/TopNavBar";
 import Dashboard from "./_components/Dashboard";
+import Loading from "./_components/Loading";
 
 export default function Home() {
   const { data: session, status } = useSession();
 
   const [showSidePanel, setShowSidePanel] = useState(true);
 
-  if (!session) {
+  if (status === "loading") {
+    return (
+      <main className="h-screen w-screen flex items-center justify-center">
+        <Loading/>
+      </main>
+    );
+  }
+
+  if (status === "unauthenticated" && !session) {
     return (
       <main className="h-screen w-screen flex items-center justify-center">
         <GoogleButton />

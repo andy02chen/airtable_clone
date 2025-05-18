@@ -1,5 +1,6 @@
 'use client';
 import { getBaseColorClass } from "../utils/colours";
+import CreateBase from "./CreateBase";
 
 export default function Dashboard() {
   const bases = [
@@ -12,12 +13,15 @@ export default function Dashboard() {
   ];
 
   return(
-    <div className="flex flex-col h-screen w-screen">
+    <div className="flex flex-col h-screen w-screen bg-gray-100 ">
       <div className="flex items-center">
         <h1 className="font-bold text-3xl p-4">Dashboard</h1>
-        <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer">Create Base</button>
+        {/* <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer">
+          Create Base
+        </button> */}
+        <CreateBase/>
       </div>
-      <div className="bg-red-300 flex-grow p-6 overflow-auto">
+      <div className="flex-grow p-6 overflow-auto">
         <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {bases.map((base) => (
             <div 

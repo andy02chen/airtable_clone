@@ -51,10 +51,10 @@ model User {
     image         String?
     accounts      Account[]
     sessions      Session[]
-    bases         Bases[]
+    bases         Base[]
 }
 
-model Bases {
+model Base {
     id      Int      @id @default(autoincrement())
     userId        String
     name          String

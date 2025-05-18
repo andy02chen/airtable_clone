@@ -27,5 +27,5 @@ TODO
 [ ] Simple sorting on columns: for text A→Z, Z→A, for numbers, do decreasing or increasing
 [ ] Can search through and hide/show columns.
 [ ] Search, filter, and sort have to be done at the database level
-[ ] Make sure there's a loading state
+[X] Make sure there's a loading state
 [ ] The ultimate goal - if there are 1m rows, it can still load without an issue!
