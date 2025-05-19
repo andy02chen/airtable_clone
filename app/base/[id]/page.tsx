@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getAuthSession } from "~/src/server/auth";
 import { db } from "~/src/server/db";
+import TableUI from "../components/TableUI";
 
 export default async function BasePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getAuthSession();
@@ -25,9 +26,6 @@ export default async function BasePage({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <div>
-      <h1>{base.name}</h1>
-      <p>ID: {base.id}</p>
-    </div>
+    <TableUI baseName={base.name} baseID={base.id}/>
   );
 }
