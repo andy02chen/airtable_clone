@@ -4,27 +4,46 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --base-color-0: #3b83f6;
-  --base-color-1: #ef4444;
-  --base-color-2: #10b981;
-  --base-color-3: #f59e0b;
-  --base-color-4: #8b5cf6;
-  --base-color-5: #ec4899;
-  --base-color-6: #14b8a6;
-  --base-color-7: #f97316;
-  --base-color-8: #6366f1;
-  --base-color-9: #84cc16;
+  --base-color-0: hsl(215, 91%, 60%);
+  --base-color-0-dark: hsl(215, 91%, 50%);
 
-  --base-color-0-dark: #2563eb;
-  --base-color-1-dark: #dc2626;
-  --base-color-2-dark: #059669;
-  --base-color-3-dark: #d97706;
-  --base-color-4-dark: #7c3aed;
-  --base-color-5-dark: #db2777;
-  --base-color-6-dark: #0d9488;
-  --base-color-7-dark: #ea580c;
-  --base-color-8-dark: #4f46e5;
-  --base-color-9-dark: #65a30d;
+  --base-color-1: hsl(0, 84%, 61%);
+  --base-color-1-dark: hsl(0, 84%, 41%);
+
+  --base-color-2: hsl(160, 84%, 39%);
+  --base-color-2-dark: hsl(160, 84%, 29%);
+
+  --base-color-3: hsl(36, 95%, 64%);
+  --base-color-3-dark: hsl(36, 95%, 54%);
+
+  --base-color-4: hsl(257, 83%, 66%);
+  --base-color-4-dark: hsl(257, 83%, 56%);
+
+  --base-color-5: hsl(327, 82%, 63%);
+  --base-color-5-dark: hsl(327, 82%, 43%);
+
+  --base-color-6: hsl(173, 82%, 39%);
+  --base-color-6-dark: hsl(173, 82%, 29%);
+
+  --base-color-7: hsl(24, 94%, 54%);
+  --base-color-7-dark: hsl(24, 94%, 34%);
+
+  --base-color-8: hsl(237, 85%, 66%);
+  --base-color-8-dark: hsl(237, 85%, 56%);
+
+  --base-color-9: hsl(74, 74%, 54%);
+  --base-color-9-dark: hsl(74, 74%, 44%);
+
+  --base-color-0-darker: hsl(215, 91%, 40%);
+  --base-color-1-darker: hsl(0, 84%, 31%);
+  --base-color-2-darker: hsl(160, 84%, 19%);
+  --base-color-3-darker: hsl(36, 95%, 44%);
+  --base-color-4-darker: hsl(257, 83%, 46%);
+  --base-color-5-darker: hsl(327, 82%, 33%);
+  --base-color-6-darker: hsl(173, 82%, 19%);
+  --base-color-7-darker: hsl(24, 94%, 24%);
+  --base-color-8-darker: hsl(237, 85%, 46%);
+  --base-color-9-darker: hsl(74, 74%, 34%);
 
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -81,6 +100,17 @@
 .base-color-7-dark { background-color: var(--base-color-7-dark); }
 .base-color-8-dark { background-color: var(--base-color-8-dark); }
 .base-color-9-dark { background-color: var(--base-color-9-dark); }
+
+.base-color-0-darker { background-color: var(--base-color-0-darker); }
+.base-color-1-darker { background-color: var(--base-color-1-darker); }
+.base-color-2-darker { background-color: var(--base-color-2-darker); }
+.base-color-3-darker { background-color: var(--base-color-3-darker); }
+.base-color-4-darker { background-color: var(--base-color-4-darker); }
+.base-color-5-darker { background-color: var(--base-color-5-darker); }
+.base-color-6-darker { background-color: var(--base-color-6-darker); }
+.base-color-7-darker { background-color: var(--base-color-7-darker); }
+.base-color-8-darker { background-color: var(--base-color-8-darker); }
+.base-color-9-darker { background-color: var(--base-color-9-darker); }
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);

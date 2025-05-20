@@ -24,7 +24,7 @@ export default function BaseContainer() {
               className="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-shadow
               flex items-center gap-4"
             >
-              <div className={`rounded w-12 h-12 ${getBaseColorClass(base.id)} flex items-center justify-center`}>
+              <div className={`rounded w-12 h-12 ${getBaseColorClass(base.id).baseColour} flex items-center justify-center`}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-cloud-icon lucide-cloud"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
               </div>
               <h3 className="font-semibold text-lg">{base.name}</h3>
