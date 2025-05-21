@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import LogOut from "~/app/_components/Logout";
 import { getBaseColorClass } from "~/app/utils/colours";
+import TableCells from "./TableCells";
 
 interface TableUIProps {
   baseName: string;
@@ -43,7 +44,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
       </nav>
 
       {/* Table tabs */}
-      <div className={`flex px-4 border-b ${dark}`}>
+      <div className={`flex px-4 border-b ${dark} overflow-x-auto`} style={{ whiteSpace: 'nowrap' }}>
         {tabs.map((tab, index) => (
           <div
             key={index}
@@ -115,6 +116,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
         </div>
         <div className="flex-1 bg-gray-200 overflow-y-auto">
           {/* Table Section */}
+          <TableCells/>
         </div>
       </div>
     </main>

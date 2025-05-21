@@ -3,10 +3,9 @@ TODO
 [ ] Just focus on the main page with table, columns, and cells.
 
 DO NEXT
-[ ] UI to name tables
 [ ] DB for tables
 [ ] Use the TanStack table library for the table UIs
-[ ] Default table names
+[ ] Default table columns
 
 [ ] UI needs to give the illusion that it’s Airtable, however, doesn’t need to match 1:1
 
