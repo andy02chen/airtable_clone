@@ -3,59 +3,77 @@ import {
   useReactTable,
   getCoreRowModel,
   flexRender,
-  createColumnHelper,
-  createTable,
   type ColumnDef,
+  type CellContext,
 } from "@tanstack/react-table";
+import { api } from "~/src/trpc/react"; 
 
+type TableCellsProps = {
+  baseId: number;
+};
 
-type Data = {
-  default_column1: string
-  default_column2: string
-  default_column3: number
-}
+type TableData = Record<string, string | number>;
 
-const defaultData: Data[] = [
-  { default_column1: "fdsafsda", default_column2: "fdsa", default_column3: 28 },
-  { default_column1: "RAFAFE", default_column2: "420", default_column3: 69 },
-];
+export default function TableCells({ baseId }: TableCellsProps) {
 
-const columnHelper = createColumnHelper<Data>()
+  const { data: tableData } = api.table.getByBaseId.useQuery(
+    { baseId },
+    { enabled: !!baseId }
+  );
 
-const defaultColumns = [
-  columnHelper.accessor("default_column1", {
-    header: () => "default_column1",
-    cell: info => info.getValue(),
-  }),
-  columnHelper.accessor("default_column2", {
-    header: () => "default_column2",
-    cell: info => info.getValue(),
-  }),
-  columnHelper.accessor("default_column3", {
-    header: () => "default_column3",
-    cell: info => info.getValue(),
-  }),
-];
+  const columns = React.useMemo(() => {
+    if (!tableData?.columns) return [];
 
-const columns = [
-  {
-    id: "rowNumber",
-    header: "#",
-    cell: info => info.row.index + 1,
-    size: 40,
-  },
-  ...defaultColumns,
-] as ColumnDef<Data, unknown>[];
+    const dynamicColumns = tableData.columns.map((column) => ({
+      id: `column_${column.id}`,
+      accessorKey: `column_${column.id}`,
+      header: column.name,
+      cell: (info: CellContext<TableData, unknown>) => {
+        const cellData = info.getValue();
+        
+        // Ensure we have a valid string or number for the input value
+        const displayValue = typeof cellData === 'string' || typeof cellData === 'number' 
+          ? cellData 
+          : '';
 
+        return (
+          <input
+            type="text"
+            value={String(displayValue)}
+            onChange={(e) => {
+              // TODO: Implement cell update logic
+              const newValue = e.target.value;
+              
+              console.log("Cell update:", {
+                rowId: info.row.original.id,
+                columnId: column.id,
+                value: newValue,
+              });
+            }}
+            className="w-full bg-transparent border-none outline-none px-2 py-1 focus:bg-blue-50"
+          />
+        );
+      },
+      size: 150,
+    }));
 
-export default function TableCells() {
+    return [
+      {
+        id: "rowNumber",
+        header: "#",
+        cell: (info: CellContext<TableData, unknown>) => info.row.index + 1,
+        size: 40,
+      },
+      ...dynamicColumns,
+    ] as ColumnDef<TableData, unknown>[];
+  }, [tableData?.columns]);
 
   const table = useReactTable({
-    data: defaultData,
+    data: tableData?.rows ?? [],
     columns: columns,
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
-    columnResizeMode: 'onChange', 
+    columnResizeMode: 'onChange',
   });
 
   return(
@@ -116,10 +134,6 @@ export default function TableCells() {
               +
             </button>
           </td>
-
-          {defaultColumns.map((_, index) => (
-            <td key={index} className="border border-gray-300 px-2 py-1" />
-          ))}
         </tr>
       </tbody>
     </table>

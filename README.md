@@ -3,16 +3,11 @@ TODO
 [ ] Just focus on the main page with table, columns, and cells.
 
 DO NEXT
-[ ] DB for tables
-[ ] Use the TanStack table library for the table UIs
-[ ] Default table columns
-
 [ ] UI needs to give the illusion that it’s Airtable, however, doesn’t need to match 1:1
 
 [ ] In each base, I can create tables.
 
 [ ] Be able to dynamically add columns.
-  [ ] Text and Number type columns are fine for now
 
 [ ] Editing cells, and tabbing across everything should be smooth
 

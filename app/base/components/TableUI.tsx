@@ -116,7 +116,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
         </div>
         <div className="flex-1 bg-gray-200 overflow-y-auto">
           {/* Table Section */}
-          <TableCells/>
+          <TableCells baseId={baseID}/>
         </div>
       </div>
     </main>
