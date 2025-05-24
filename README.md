@@ -3,11 +3,11 @@ TODO
 [ ] Just focus on the main page with table, columns, and cells.
 
 DO NEXT
+[ ] Editing cells, and tabbing across everything should be smooth
+
 [ ] In each base, I can create tables.
 
-[ ] Be able to dynamically add columns.
-
-[ ] Editing cells, and tabbing across everything should be smooth
+[ ] Loading when adding rows or columns
 
 [ ] Creating a new table will show default rows and columns. User fakerjs for data
 

@@ -17,9 +17,45 @@ type TableCellsProps = {
 
 type TableData = Record<string, string | number>;
 
+// Separate component to handle individual cell input with local state
+function CellInput({ 
+  initialValue, 
+  rowId, 
+  columnId, 
+  onUpdate 
+}: {
+  initialValue: string;
+  rowId: number;
+  columnId: number;
+  onUpdate: (rowId: number, columnId: number, value: string) => void;
+}) {
+  const [localValue, setLocalValue] = React.useState(initialValue);
+
+  // Update local state when server value changes
+  React.useEffect(() => {
+    setLocalValue(initialValue);
+  }, [initialValue]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    onUpdate(rowId, columnId, newValue);
+  };
+
+  return (
+    <input
+      type="text"
+      value={localValue}
+      onChange={handleChange}
+      className="w-full bg-transparent border-none outline-none px-2 py-1 focus:bg-blue-50"
+    />
+  );
+}
+
 export default function TableCells({ tableId }: TableCellsProps) {
 
   const utils = api.useUtils();
+  const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
   // Fetch the specific table data
   const { data: tableData, isLoading } = api.table.getById.useQuery(
@@ -48,52 +84,116 @@ export default function TableCells({ tableId }: TableCellsProps) {
     }
   });
 
-  const columns = React.useMemo(() => {
-    if (!tableData?.columns) return [];
+  const updateCellMutation = api.base.updateCell.useMutation({
+    onMutate: async ({ rowId, column: columnId, value }) => {
+      // Cancel any outgoing refetches
+      await utils.table.getById.cancel({ id: tableId });
 
-    const dynamicColumns = tableData.columns.map((column) => ({
-      id: `column_${column.id}`,
-      accessorKey: `column_${column.id}`,
-      header: column.name,
-      cell: (info: CellContext<TableData, unknown>) => {
-        const cellData = info.getValue();
+      // Snapshot the previous value
+      const previousData = utils.table.getById.getData({ id: tableId });
+
+      // Optimistically update the cache
+      utils.table.getById.setData({ id: tableId }, (old) => {
+        if (!old) return old;
         
-        // Ensure we have a valid string or number for the input value
-        const displayValue = typeof cellData === 'string' || typeof cellData === 'number' 
-          ? cellData 
-          : '';
+        const updatedRows = old.rows?.map(row => {
+          if (row.id === rowId) {
+            return {
+              ...row,
+              [`column_${columnId}`]: value
+            };
+          }
+          return row;
+        });
 
-        return (
-          <input
-            type="text"
-            value={String(displayValue)}
-            onChange={(e) => {
-              // TODO: Implement cell update logic
-              const newValue = e.target.value;
-              
-              console.log("Cell update:", {
-                rowId: info.row.original.id,
-                columnId: column.id,
-                value: newValue,
-              });
-            }}
-            className="w-full bg-transparent border-none outline-none px-2 py-1 focus:bg-blue-50"
-          />
-        );
-      },
-      size: 150,
-    }));
+        return {
+          ...old,
+          rows: updatedRows
+        };
+      });
 
-    return [
+      return { previousData };
+    },
+    onError: (err, variables, context) => {
+      console.error("Failed to update cell:", err);
+      // Revert on error
+      if (context?.previousData) {
+        utils.table.getById.setData({ id: tableId }, context.previousData);
+      }
+    },
+    onSettled: async () => {
+      // Always refetch after error or success to ensure we have the latest data
+      await utils.table.getById.invalidate({ id: tableId });
+    }
+  });
+
+  const handleCellUpdate = React.useCallback((rowId: number, columnKey: number, value: string) => {
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    debounceTimeout.current = setTimeout(() => {
+      updateCellMutation.mutate({
+        rowId,
+        column: columnKey,
+        value,
+      });
+    }, 500);
+  }, [updateCellMutation]);
+
+  const columns = React.useMemo(() => {
+    // Always return a consistent array structure
+    const baseColumns: ColumnDef<TableData, unknown>[] = [
       {
         id: "rowNumber",
         header: "#",
         cell: (info: CellContext<TableData, unknown>) => info.row.index + 1,
         size: 40,
-      },
-      ...dynamicColumns,
-    ] as ColumnDef<TableData, unknown>[];
-  }, [tableData?.columns]);
+      }
+    ];
+
+    // Only add dynamic columns if tableData and columns exist
+    if (tableData?.columns) {
+      const dynamicColumns = tableData.columns.map((column) => ({
+        id: `column_${column.id}`,
+        accessorKey: `column_${column.id}`,
+        header: column.name,
+        cell: (info: CellContext<TableData, unknown>) => {
+          const cellData = info.getValue();
+          const rowId = info.row.original.id;
+          const columnId = column.id;
+          
+          // Type check to ensure we have valid IDs
+          if (typeof rowId !== "number" || typeof columnId !== "number") {
+            return <span className="px-2 py-1 text-gray-400">Invalid cell</span>;
+          }
+          
+          // Create a unique key for this cell to maintain local state
+          const cellKey = `${rowId}_${columnId}`;
+          
+          // Ensure we have a valid string or number for the input value
+          const serverValue = typeof cellData === 'string' || typeof cellData === 'number' 
+            ? String(cellData) 
+            : '';
+
+          return (
+            <CellInput
+              key={cellKey}
+              initialValue={serverValue}
+              rowId={rowId}
+              columnId={columnId}
+              onUpdate={handleCellUpdate}
+            />
+          );
+        },
+        size: 150,
+      }));
+
+      return [...baseColumns, ...dynamicColumns];
+    }
+
+    return baseColumns;
+  }, [tableData?.columns, handleCellUpdate]);
 
   const table = useReactTable({
     data: tableData?.rows ?? [],
@@ -102,6 +202,15 @@ export default function TableCells({ tableId }: TableCellsProps) {
     enableColumnResizing: true,
     columnResizeMode: 'onChange',
   });
+
+  // Cleanup effect - always called
+  React.useEffect(() => {
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, []);
 
   if (isLoading) {
     return (

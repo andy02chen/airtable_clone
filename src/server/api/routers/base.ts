@@ -184,4 +184,73 @@ export const baseRouter = createTRPCRouter({
 
       return base;
     }),
+
+  updateCell: protectedProcedure
+  .input(z.object({
+    rowId: z.number(),
+    column: z.number(), // This should be columnId
+    value: z.union([z.string(), z.number()]),
+  }))
+  .mutation(async ({ input, ctx }) => {
+    const { rowId, column: columnId, value } = input;
+
+    // First verify that the user has access to this cell by checking the table ownership
+    const cell = await ctx.db.cell.findFirst({
+      where: {
+        rowId,
+        columnId,
+      },
+      include: {
+        row: {
+          include: {
+            table: {
+              include: {
+                base: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!cell || cell.row.table.base.userId !== ctx.session.user.id) {
+      throw new Error("Cell not found or access denied");
+    }
+
+    // Determine if the value should be stored as text or numeric based on column type
+    const column = await ctx.db.column.findUnique({
+      where: { id: columnId },
+    });
+
+    if (!column) {
+      throw new Error("Column not found");
+    }
+
+    let updateData: { value?: string | null; numericValue?: number | null } = {};
+
+    if (column.type === "NUMBER") {
+      const numericValue = typeof value === "number" ? value : parseFloat(String(value));
+      if (isNaN(numericValue)) {
+        updateData = { value: null, numericValue: null };
+      } else {
+        updateData = { value: null, numericValue };
+      }
+    } else {
+      // TEXT type
+      updateData = { value: String(value), numericValue: null };
+    }
+
+    // Update the cell
+    const updatedCell = await ctx.db.cell.update({
+      where: {
+        rowId_columnId: {
+          rowId,
+          columnId,
+        },
+      },
+      data: updateData,
+    });
+
+    return updatedCell;
+  }),
 });

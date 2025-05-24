@@ -19,7 +19,7 @@ export function AddColumnButton({ onAdd }: { onAdd: (name: string, type: "TEXT" 
     onClick={() => setShowForm((prev) => !prev)}>
       +
       {showForm && (
-        <div className="absolute top-full left-0 z-10 mt-2 w-48 bg-white border border-gray-300 rounded-md shadow-lg p-2"
+        <div className="absolute top-full left-0 z-10 mt-2 w-48 bg-white border border-gray-300 rounded-md shadow-lg p-4"
           onClick={(e) => e.stopPropagation()}>
           <input
             type="text"
