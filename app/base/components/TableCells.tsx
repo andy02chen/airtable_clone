@@ -22,11 +22,13 @@ function CellInput({
   initialValue, 
   rowId, 
   columnId, 
+  columnType,
   onUpdate 
 }: {
   initialValue: string;
   rowId: number;
   columnId: number;
+  columnType?: string;
   onUpdate: (rowId: number, columnId: number, value: string) => void;
 }) {
   const [localValue, setLocalValue] = React.useState(initialValue);
@@ -38,6 +40,14 @@ function CellInput({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
+
+    if (columnType === 'number' && newValue !== '') {
+      const numericValue = parseFloat(newValue);
+      if (isNaN(numericValue)) {
+        return;
+      }
+    }
+
     setLocalValue(newValue);
     onUpdate(rowId, columnId, newValue);
   };
@@ -142,58 +152,53 @@ export default function TableCells({ tableId }: TableCellsProps) {
   }, [updateCellMutation]);
 
   const columns = React.useMemo(() => {
-    // Always return a consistent array structure
-    const baseColumns: ColumnDef<TableData, unknown>[] = [
-      {
-        id: "rowNumber",
-        header: "#",
-        cell: (info: CellContext<TableData, unknown>) => info.row.index + 1,
-        size: 40,
-      }
-    ];
-
-    // Only add dynamic columns if tableData and columns exist
-    if (tableData?.columns) {
-      const dynamicColumns = tableData.columns.map((column) => ({
-        id: `column_${column.id}`,
-        accessorKey: `column_${column.id}`,
-        header: column.name,
-        cell: (info: CellContext<TableData, unknown>) => {
-          const cellData = info.getValue();
-          const rowId = info.row.original.id;
-          const columnId = column.id;
-          
-          // Type check to ensure we have valid IDs
-          if (typeof rowId !== "number" || typeof columnId !== "number") {
-            return <span className="px-2 py-1 text-gray-400">Invalid cell</span>;
-          }
-          
-          // Create a unique key for this cell to maintain local state
-          const cellKey = `${rowId}_${columnId}`;
-          
-          // Ensure we have a valid string or number for the input value
-          const serverValue = typeof cellData === 'string' || typeof cellData === 'number' 
-            ? String(cellData) 
-            : '';
-
-          return (
-            <CellInput
-              key={cellKey}
-              initialValue={serverValue}
-              rowId={rowId}
-              columnId={columnId}
-              onUpdate={handleCellUpdate}
-            />
-          );
-        },
-        size: 150,
-      }));
-
-      return [...baseColumns, ...dynamicColumns];
+  const baseColumns: ColumnDef<TableData, unknown>[] = [
+    {
+      id: "rowNumber",
+      header: "#",
+      cell: (info: CellContext<TableData, unknown>) => info.row.index + 1,
+      size: 40,
     }
+  ];
 
-    return baseColumns;
-  }, [tableData?.columns, handleCellUpdate]);
+  if (tableData?.columns) {
+    const dynamicColumns = tableData.columns.map((column) => ({
+      id: `column_${column.id}`,
+      accessorKey: `column_${column.id}`,
+      header: column.name,
+      cell: (info: CellContext<TableData, unknown>) => {
+        const cellData = info.getValue();
+        const rowId = info.row.original.id;
+        const columnId = column.id;
+        
+        if (typeof rowId !== "number" || typeof columnId !== "number") {
+          return <span className="px-2 py-1 text-gray-400">Invalid cell</span>;
+        }
+        
+        const cellKey = `${rowId}_${columnId}`;
+        const serverValue = typeof cellData === 'string' || typeof cellData === 'number' 
+          ? String(cellData) 
+          : '';
+
+        return (
+          <CellInput
+            key={cellKey}
+            initialValue={serverValue}
+            rowId={rowId}
+            columnId={columnId}
+            columnType={column.type}
+            onUpdate={handleCellUpdate}
+          />
+        );
+      },
+      size: 150,
+    }));
+
+    return [...baseColumns, ...dynamicColumns];
+  }
+
+  return baseColumns;
+}, [tableData?.columns, handleCellUpdate]);
 
   const table = useReactTable({
     data: tableData?.rows ?? [],
