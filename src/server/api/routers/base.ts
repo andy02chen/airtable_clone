@@ -4,158 +4,114 @@ import { faker } from '@faker-js/faker';
 
 export const baseRouter = createTRPCRouter({
   create: protectedProcedure
-    .input(
-      z.object({
-        name: z.string().min(1),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id;
-
-      const result = await ctx.db.$transaction(async (tx) => {
-
-        const base = await tx.base.create({
-          data: {
-            name: input.name,
-            userId,
-          },
-        });
-
-        const table = await tx.table.create({
-          data: {
-            name: "Table 1",
-            baseId: base.id,
-          },
-        });
-
-        const columns = await tx.column.createMany({
-          data: [
-            {
-              name: "First Name",
-              type: "TEXT",
-              order: 0,
-              tableId: table.id,
-            },
-            {
-              name: "Last Name",
-              type: "TEXT",
-              order: 1,
-              tableId: table.id,
-            },
-            {
-              name: "Age",
-              type: "NUMBER",
-              order: 2,
-              tableId: table.id,
-            },
-          ],
-        });
-
-        const createdColumns = await tx.column.findMany({
-          where: { tableId: table.id },
-          orderBy: { order: 'asc' },
-        });
-
-        const rows = await tx.row.createMany({
-          data: Array.from({ length: 5 }, (_, index) => ({
-            order: index,
-            tableId: table.id,
-          })),
-        });
-
-        const createdRows = await tx.row.findMany({
-          where: { tableId: table.id },
-          orderBy: { order: 'asc' },
-        });
-
-        const cellsData = [];
-        for (const row of createdRows) {
-          for (const column of createdColumns) {
-            let value: string | null = null;
-            let numericValue: number | null = null;
-
-            switch (column.name.toLowerCase()) {
-              case "first name":
-                value = faker.person.firstName();
-                break;
-              case "last name":
-                value = faker.person.lastName();
-                break;
-              case "age":
-                numericValue = faker.number.int({ min: 18, max: 99 });
-                break;
-              default:
-                value = "N/A";
-            }
-
-            cellsData.push({
-              rowId: row.id,
-              columnId: column.id,
-              value,
-              numericValue,
-            });
-          }
-        }
-
-        await tx.cell.createMany({
-          data: cellsData,
-        });
-
-        return base;
-      });
-
-      return result;
-    }),
-
-  createRow: protectedProcedure.input(
-    z.object({
-      tableId: z.number()
-    })
-  )
-  .mutation(async ({ctx, input}) => {
+  .input(z.object({ name: z.string().min(1) }))
+  .mutation(async ({ ctx, input }) => {
     const userId = ctx.session.user.id;
 
     const result = await ctx.db.$transaction(async (tx) => {
-      const table = await tx.table.findFirst({
-          where: { 
-            id: input.tableId,
-            base: { userId }
-          },
-        });
-
-      const lastRow = await tx.row.findFirst({
-          where: { tableId: input.tableId },
-          orderBy: { order: 'desc' },
-        });
-
-      const newOrder = (lastRow?.order ?? -1) + 1;
-
-      const newRow = await tx.row.create({
-        data: {
-          order: newOrder,
-          tableId: input.tableId,
-        },
+      const base = await tx.base.create({
+        data: { name: input.name, userId },
       });
 
-      const columns = await tx.column.findMany({
-        where: { tableId: input.tableId },
-        orderBy: { order: 'asc' },
+      const table = await tx.table.create({
+        data: { name: "Table 1", baseId: base.id },
       });
 
-      const cellsData = columns.map(column => ({
-        rowId: newRow.id,
-        columnId: column.id,
-        value: null,
-        numericValue: null,
-      }));
+      const createdColumns = await tx.$queryRaw<
+        { id: number; name: string }[]
+      >`
+        INSERT INTO "Column" ("name", "type", "order", "tableId")
+        VALUES
+          ('First Name', 'TEXT', 0, ${table.id}),
+          ('Last Name', 'TEXT', 1, ${table.id}),
+          ('Age', 'NUMBER', 2, ${table.id})
+        RETURNING "id", "name";
+      `;
 
-      if (cellsData.length > 0) {
-          await tx.cell.createMany({
-            data: cellsData,
+      const createdRows = await tx.$queryRaw<{ id: number }[]>`
+        INSERT INTO "Row" ("order", "tableId")
+        SELECT generate_series(0, 4), ${table.id}
+        RETURNING "id";
+      `;
+
+      // Generate all cells for each row x column
+      const cellsData: { rowId: number; columnId: number; value: string | null; numericValue: number | null }[] = [];
+
+      for (const row of createdRows) {
+        for (const column of createdColumns) {
+          let value: string | null = null;
+          let numericValue: number | null = null;
+
+          switch (column.name.toLowerCase()) {
+            case "first name":
+              value = faker.person.firstName();
+              break;
+            case "last name":
+              value = faker.person.lastName();
+              break;
+            case "age":
+              numericValue = faker.number.int({ min: 18, max: 99 });
+              break;
+            default:
+              value = "N/A";
+          }
+
+          cellsData.push({
+            rowId: row.id,
+            columnId: column.id,
+            value,
+            numericValue,
           });
         }
+      }
 
-        return newRow;
+      // Bulk insert using createMany (good enough here)
+      await tx.cell.createMany({ data: cellsData });
+
+      return base;
+    });
+
+    return result;
+  }),
+  
+  createRow: protectedProcedure
+  .input(z.object({ tableId: z.number() }))
+  .mutation(async ({ ctx, input }) => {
+    const userId = ctx.session.user.id;
+    const { tableId } = input;
+
+    const table = await ctx.db.table.findFirst({
+      where: {
+        id: tableId,
+        base: { userId },
+      },
+    });
+
+    const result = await ctx.db.$transaction(async (tx) => {
+      const lastOrderResult = await tx.$queryRaw<{ max_order: number | null }[]>`
+        SELECT MAX("order") AS max_order FROM "Row" WHERE "tableId" = ${tableId};
+      `;
+      const lastOrder = lastOrderResult[0]?.max_order ?? -1;
+      const newOrder = lastOrder + 1;
+
+      const newRowResult = await tx.$queryRaw<{ id: number }[]>`
+        INSERT INTO "Row" ("order", "tableId")
+        VALUES (${newOrder}, ${tableId})
+        RETURNING "id";
+      `;
+
+      if (!newRowResult[0]) {
+        throw new Error("Failed to insert new row");
+      }
+
+      const newRowId = newRowResult[0].id;
+
+      await tx.$executeRaw`
+        INSERT INTO "Cell" ("rowId", "columnId", "value", "numericValue")
+        SELECT ${newRowId}, "id", NULL, NULL FROM "Column" WHERE "tableId" = ${tableId};
+      `;
+
+      return { id: newRowId, order: newOrder, tableId };
     });
 
     return result;
