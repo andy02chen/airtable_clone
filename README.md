@@ -1,10 +1,8 @@
 TODO
-
+[ ] UI needs to give the illusion that it’s Airtable, however, doesn’t need to match 1:1
 [ ] Just focus on the main page with table, columns, and cells.
 
 DO NEXT
-[ ] UI needs to give the illusion that it’s Airtable, however, doesn’t need to match 1:1
-
 [ ] In each base, I can create tables.
 
 [ ] Be able to dynamically add columns.

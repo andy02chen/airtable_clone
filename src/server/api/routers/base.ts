@@ -73,7 +73,7 @@ export const baseRouter = createTRPCRouter({
 
     return result;
   }),
-  
+
   createRow: protectedProcedure
   .input(z.object({ tableId: z.number() }))
   .mutation(async ({ ctx, input }) => {
@@ -115,6 +115,52 @@ export const baseRouter = createTRPCRouter({
     });
 
     return result;
+  }),
+
+  createColumn: protectedProcedure
+  .input(
+    z.object({
+      tableId: z.number(),
+      name: z.string().min(1),
+      type: z.enum(["TEXT", "NUMBER"]),
+    })
+  )
+  .mutation(async ({ ctx, input }) => {
+    const userId = ctx.session.user.id;
+
+    const table = await ctx.db.table.findFirst({
+      where: {
+        id: input.tableId,
+        base: {
+          userId,
+        },
+      },
+      include: {
+        columns: true,
+      },
+    });
+
+    if (!table) throw new Error("Table not found or access denied");
+
+    const nextOrder = table.columns.length;
+
+    const newColumn = await ctx.db.column.create({
+      data: {
+        name: input.name,
+        type: input.type,
+        order: nextOrder,
+        tableId: input.tableId,
+      },
+    });
+
+    await ctx.db.$executeRaw`
+      INSERT INTO "Cell" ("rowId", "columnId", "value", "numericValue")
+      SELECT r."id", ${newColumn.id}, NULL, NULL
+      FROM "Row" r
+      WHERE r."tableId" = ${input.tableId};
+    `;
+
+    return newColumn;
   }),
 
   list: protectedProcedure.query(async ({ ctx }) => {

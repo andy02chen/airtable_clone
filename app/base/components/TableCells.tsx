@@ -9,6 +9,7 @@ import {
 import { api } from "~/src/trpc/react"; 
 
 import Loading from "~/app/_components/Loading";
+import { AddColumnButton } from "./AddColumn";
 
 type TableCellsProps = {
   tableId: number;
@@ -28,6 +29,16 @@ export default function TableCells({ tableId }: TableCellsProps) {
 
   // Create row
   const createRowMutation = api.base.createRow.useMutation({
+    onSuccess: async () => {
+      // Invalidate the specific table data query
+      await utils.table.getById.invalidate({ id: tableId });
+    },
+    onError: (error) => {
+      console.error("Failed to create row:", error);
+    }
+  });
+
+  const createColumnMutation = api.base.createColumn.useMutation({
     onSuccess: async () => {
       // Invalidate the specific table data query
       await utils.table.getById.invalidate({ id: tableId });
@@ -124,14 +135,9 @@ export default function TableCells({ tableId }: TableCellsProps) {
               </th>
             ))}
 
-          <th className="w-[50px] border border-gray-300 text-center cursor-pointer hover:bg-gray-50">
-            <button
-              className="text-lg text-gray-600 hover:text-black cursor-pointer"
-              title="Add Column"
-            >
-              +
-            </button>
-          </th>
+            <AddColumnButton onAdd={(name, type) => {
+              createColumnMutation.mutate({ tableId, name, type });
+            }} />
           </tr>
         ))}
       </thead>
