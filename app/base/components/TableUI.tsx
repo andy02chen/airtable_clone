@@ -1,10 +1,12 @@
 'use client';
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import LogOut from "~/app/_components/Logout";
 import { getBaseColorClass } from "~/app/utils/colours";
+import { api } from "~/src/trpc/react";
 import TableCells from "./TableCells";
+import Loading from "~/app/_components/Loading";
 
 interface TableUIProps {
   baseName: string;
@@ -12,19 +14,39 @@ interface TableUIProps {
 }
 
 export default function TableUI({ baseName, baseID } : TableUIProps) {
-
-  const [tabs, setTabs] = useState<string[]>(["Table 1"]);
   const [activeTab, setActiveTab] = useState<number>(0);
-
   const [showViews, setShowViews] = useState<boolean>(true);
 
-  const addTab = () => {
-    const newTab = `Table ${tabs.length + 1}`;
-    setTabs([...tabs, newTab]);
-    setActiveTab(tabs.length);
-  };
+  const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
+
+
+  // For now, we'll work with a single table per base since your current API returns one table
+  // You can extend this later to support multiple tables
+  const { data: tableData, isLoading: tablesLoading } = api.table.getByBaseId.useQuery(
+    { baseId: baseID },
+    { enabled: !!baseID }
+  );
 
   const { baseColour, dark, darker} = getBaseColorClass(baseID);
+
+  // Since your API currently returns one table per base, we'll use static tabs for now
+  const tabs = tableData ? tableData.map(t => t.name) : ["Table 1"];
+
+  const addTab = () => {
+    // TODO: Add logic to create a new table in the database
+    // When implemented, this will call a createTable mutation
+    console.log("Add new table functionality to be implemented");
+  };
+
+  if (tablesLoading || !tableData || !tableData[activeTab]) {
+    return(
+      <div className='h-screen w-screen flex items-center justify-center'>
+        <Loading/>
+      </div>
+    )
+  }
+
+const currentTableId = tableData[activeTab].id;
 
   return(
     <main className="h-screen w-screen flex flex-col">
@@ -115,8 +137,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
           </div>
         </div>
         <div className="flex-1 bg-gray-200 overflow-y-auto">
-          {/* Table Section */}
-          <TableCells baseId={baseID}/>
+          <TableCells tableId={currentTableId} />
         </div>
       </div>
     </main>

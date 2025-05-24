@@ -8,18 +8,34 @@ import {
 } from "@tanstack/react-table";
 import { api } from "~/src/trpc/react"; 
 
+import Loading from "~/app/_components/Loading";
+
 type TableCellsProps = {
-  baseId: number;
+  tableId: number;
 };
 
 type TableData = Record<string, string | number>;
 
-export default function TableCells({ baseId }: TableCellsProps) {
+export default function TableCells({ tableId }: TableCellsProps) {
 
-  const { data: tableData } = api.table.getByBaseId.useQuery(
-    { baseId },
-    { enabled: !!baseId }
+  const utils = api.useUtils();
+
+  // Fetch the specific table data
+  const { data: tableData, isLoading } = api.table.getById.useQuery(
+    { id: tableId },
+    { enabled: !!tableId }
   );
+
+  // Create row
+  const createRowMutation = api.base.createRow.useMutation({
+    onSuccess: () => {
+      // Invalidate the specific table data query
+      utils.table.getById.invalidate({ id: tableId });
+    },
+    onError: (error) => {
+      console.error("Failed to create row:", error);
+    }
+  });
 
   const columns = React.useMemo(() => {
     if (!tableData?.columns) return [];
@@ -76,6 +92,14 @@ export default function TableCells({ baseId }: TableCellsProps) {
     columnResizeMode: 'onChange',
   });
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loading />
+      </div>
+    );
+  }
+
   return(
     <table className="border border-gray-300 select-none">
       <thead className="bg-gray-100">
@@ -126,10 +150,14 @@ export default function TableCells({ baseId }: TableCellsProps) {
         ))}
 
         <tr>
-          <td className="text-center border border-gray-300 cursor-pointer hover:bg-gray-100">
+          <td className="text-center border border-gray-300 cursor-pointer hover:bg-gray-100"
+            onClick={() => {
+              createRowMutation.mutate({ 
+                tableId: tableId 
+              });
+            }}>
             <button
-              className="text-lg text-gray-600 hover:text-black"
-              title="Add Row"
+              className="text-lg text-gray-600 hover:text-black cursor-pointer"
             >
               +
             </button>

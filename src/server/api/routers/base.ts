@@ -75,10 +75,10 @@ export const baseRouter = createTRPCRouter({
             let numericValue: number | null = null;
 
             switch (column.name.toLowerCase()) {
-              case "firstname":
+              case "first name":
                 value = faker.person.firstName();
                 break;
-              case "lastname":
+              case "last name":
                 value = faker.person.lastName();
                 break;
               case "age":
@@ -106,6 +106,60 @@ export const baseRouter = createTRPCRouter({
 
       return result;
     }),
+
+  createRow: protectedProcedure.input(
+    z.object({
+      tableId: z.number()
+    })
+  )
+  .mutation(async ({ctx, input}) => {
+    const userId = ctx.session.user.id;
+
+    const result = await ctx.db.$transaction(async (tx) => {
+      const table = await tx.table.findFirst({
+          where: { 
+            id: input.tableId,
+            base: { userId }
+          },
+        });
+
+      const lastRow = await tx.row.findFirst({
+          where: { tableId: input.tableId },
+          orderBy: { order: 'desc' },
+        });
+
+      const newOrder = (lastRow?.order ?? -1) + 1;
+
+      const newRow = await tx.row.create({
+        data: {
+          order: newOrder,
+          tableId: input.tableId,
+        },
+      });
+
+      const columns = await tx.column.findMany({
+        where: { tableId: input.tableId },
+        orderBy: { order: 'asc' },
+      });
+
+      const cellsData = columns.map(column => ({
+        rowId: newRow.id,
+        columnId: column.id,
+        value: null,
+        numericValue: null,
+      }));
+
+      if (cellsData.length > 0) {
+          await tx.cell.createMany({
+            data: cellsData,
+          });
+        }
+
+        return newRow;
+    });
+
+    return result;
+  }),
 
   list: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
