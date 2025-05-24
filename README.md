@@ -3,14 +3,6 @@ TODO
 [ ] Just focus on the main page with table, columns, and cells.
 
 DO NEXT
-[ ] Editing cells, and tabbing across everything should be smooth
-
-[ ] In each base, I can create tables.
-
-[ ] Loading when adding rows or columns
-
-[ ] Creating a new table will show default rows and columns. User fakerjs for data
-
 [ ] I want to see a table w/ 100k rows and scroll down without lag
   [ ] Add a button I can click that will add 100k rows to my table.
   [ ] Implement virtualized infinite scroll using TRPC’s hooks and TanStack virtualizer

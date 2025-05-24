@@ -16,29 +16,63 @@ interface TableUIProps {
 export default function TableUI({ baseName, baseID } : TableUIProps) {
   const [activeTab, setActiveTab] = useState<number>(0);
   const [showViews, setShowViews] = useState<boolean>(true);
+  const [newTableName, setNewTableName] = useState<string>("");
+  const [showCreateForm, setShowCreateForm] = useState<boolean>(false);
 
-  const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
+  const utils = api.useUtils();
 
-
-  // For now, we'll work with a single table per base since your current API returns one table
-  // You can extend this later to support multiple tables
+  // Get all tables for this base
   const { data: tableData, isLoading: tablesLoading } = api.table.getByBaseId.useQuery(
     { baseId: baseID },
     { enabled: !!baseID }
   );
 
-  const { baseColour, dark, darker} = getBaseColorClass(baseID);
+  // Create table mutation
+  const createTableMutation = api.table.create.useMutation({
+    onSuccess: async () => {
+      // Refetch tables after successful creation
+      await utils.table.getByBaseId.invalidate({ baseId: baseID });
+      setShowCreateForm(false);
+      setNewTableName("");
+      // Set active tab to the newly created table (it will be the last one)
+      if (tableData) {
+        setActiveTab(tableData.length);
+      }
+    },
+    onError: (error) => {
+      console.error("Failed to create table:", error);
+      // You might want to show a toast notification here
+    }
+  });
 
-  // Since your API currently returns one table per base, we'll use static tabs for now
-  const tabs = tableData ? tableData.map(t => t.name) : ["Table 1"];
+  const { baseColour, dark, darker } = getBaseColorClass(baseID);
 
-  const addTab = () => {
-    // TODO: Add logic to create a new table in the database
-    // When implemented, this will call a createTable mutation
-    console.log("Add new table functionality to be implemented");
+  // Reset active tab if it's out of bounds
+  useEffect(() => {
+    if (tableData && activeTab >= tableData.length) {
+      setActiveTab(Math.max(0, tableData.length - 1));
+    }
+  }, [tableData, activeTab]);
+
+  const handleCreateTable = () => {
+    if (newTableName.trim()) {
+      createTableMutation.mutate({
+        baseId: baseID,
+        name: newTableName.trim()
+      });
+    }
   };
 
-  if (tablesLoading || !tableData?.[activeTab]) {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleCreateTable();
+    } else if (e.key === 'Escape') {
+      setShowCreateForm(false);
+      setNewTableName("");
+    }
+  };
+
+  if (tablesLoading || !tableData || tableData.length === 0) {
     return(
       <div className='h-screen w-screen flex items-center justify-center'>
         <Loading/>
@@ -46,7 +80,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     )
   }
 
-const currentTableId = tableData[activeTab].id;
+  const currentTableId = tableData[activeTab]?.id;
 
   return(
     <main className="h-screen w-screen flex flex-col">
@@ -67,9 +101,9 @@ const currentTableId = tableData[activeTab].id;
 
       {/* Table tabs */}
       <div className={`flex px-4 border-b ${dark} overflow-x-auto`} style={{ whiteSpace: 'nowrap' }}>
-        {tabs.map((tab, index) => (
+        {tableData.map((table, index) => (
           <div
-            key={index}
+            key={table.id}
             className={`px-4 py-2 rounded-t-lg cursor-pointer transition-colors duration-200 ${
               activeTab === index ? 'bg-white text-black' : `${dark} text-gray-200`
             }`}
@@ -90,15 +124,47 @@ const currentTableId = tableData[activeTab].id;
             }}
             onClick={() => setActiveTab(index)}
           >
-            {tab}
+            {table.name}
           </div>
         ))}
-        <div
-          className={`px-4 py-2 rounded-t-lg cursor-pointer ${dark} text-gray-200 hover:text-gray-300`}
-          onClick={addTab}
-        >
-          + Add table
-        </div>
+        
+        {/* Add table button or form */}
+        {showCreateForm ? (
+          <div className="flex items-center px-2 py-1 bg-white rounded-t-lg">
+            <input
+              type="text"
+              value={newTableName}
+              onChange={(e) => setNewTableName(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Table name"
+              className="px-2 py-1 text-sm border border-gray-300 rounded text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+            />
+            <button
+              onClick={handleCreateTable}
+              disabled={!newTableName.trim() || createTableMutation.isPending}
+              className="ml-2 px-2 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {createTableMutation.isPending ? '...' : '✓'}
+            </button>
+            <button
+              onClick={() => {
+                setShowCreateForm(false);
+                setNewTableName("");
+              }}
+              className="ml-1 px-2 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <div
+            className={`px-4 py-2 rounded-t-lg cursor-pointer ${dark} text-gray-200 hover:text-gray-300`}
+            onClick={() => setShowCreateForm(true)}
+          >
+            + Add table
+          </div>
+        )}
       </div>
 
       {/* Buttons */}
@@ -137,7 +203,7 @@ const currentTableId = tableData[activeTab].id;
           </div>
         </div>
         <div className="flex-1 bg-gray-200 overflow-y-auto">
-          <TableCells tableId={currentTableId} />
+          {currentTableId && <TableCells tableId={currentTableId} />}
         </div>
       </div>
     </main>

@@ -138,7 +138,7 @@ export default function TableCells({ tableId }: TableCellsProps) {
         column: columnKey,
         value,
       });
-    }, 500);
+    }, 1500);
   }, [updateCellMutation]);
 
   const columns = React.useMemo(() => {
@@ -212,7 +212,7 @@ export default function TableCells({ tableId }: TableCellsProps) {
     };
   }, []);
 
-  if (isLoading) {
+  if (isLoading || createRowMutation.isPending || createColumnMutation.isPending) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loading />
