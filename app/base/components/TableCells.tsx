@@ -28,9 +28,9 @@ export default function TableCells({ tableId }: TableCellsProps) {
 
   // Create row
   const createRowMutation = api.base.createRow.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       // Invalidate the specific table data query
-      utils.table.getById.invalidate({ id: tableId });
+      await utils.table.getById.invalidate({ id: tableId });
     },
     onError: (error) => {
       console.error("Failed to create row:", error);

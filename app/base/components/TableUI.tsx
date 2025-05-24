@@ -38,7 +38,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     console.log("Add new table functionality to be implemented");
   };
 
-  if (tablesLoading || !tableData || !tableData[activeTab]) {
+  if (tablesLoading || !tableData?.[activeTab]) {
     return(
       <div className='h-screen w-screen flex items-center justify-center'>
         <Loading/>
