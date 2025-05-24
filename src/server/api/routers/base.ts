@@ -28,47 +28,49 @@ export const baseRouter = createTRPCRouter({
           },
         });
 
-        const columns = await Promise.all([
-          tx.column.create({
-            data: {
-              name: "firstname",
+        const columns = await tx.column.createMany({
+          data: [
+            {
+              name: "First Name",
               type: "TEXT",
               order: 0,
               tableId: table.id,
             },
-          }),
-          tx.column.create({
-            data: {
-              name: "lastname",
+            {
+              name: "Last Name",
               type: "TEXT",
               order: 1,
               tableId: table.id,
             },
-          }),
-          tx.column.create({
-            data: {
+            {
               name: "Age",
               type: "NUMBER",
               order: 2,
               tableId: table.id,
             },
-          }),
-        ]);
+          ],
+        });
 
-        const rows = await Promise.all(
-          Array.from({ length: 5 }, (_, index) =>
-            tx.row.create({
-              data: {
-                order: index,
-                tableId: table.id,
-              },
-            })
-          )
-        );
+        const createdColumns = await tx.column.findMany({
+          where: { tableId: table.id },
+          orderBy: { order: 'asc' },
+        });
 
-        const cellPromises = [];
-        for (const row of rows) {
-          for (const column of columns) {
+        const rows = await tx.row.createMany({
+          data: Array.from({ length: 5 }, (_, index) => ({
+            order: index,
+            tableId: table.id,
+          })),
+        });
+
+        const createdRows = await tx.row.findMany({
+          where: { tableId: table.id },
+          orderBy: { order: 'asc' },
+        });
+
+        const cellsData = [];
+        for (const row of createdRows) {
+          for (const column of createdColumns) {
             let value: string | null = null;
             let numericValue: number | null = null;
 
@@ -86,20 +88,18 @@ export const baseRouter = createTRPCRouter({
                 value = "N/A";
             }
 
-            cellPromises.push(
-              tx.cell.create({
-                data: {
-                  rowId: row.id,
-                  columnId: column.id,
-                  value,
-                  numericValue,
-                },
-              })
-            );
+            cellsData.push({
+              rowId: row.id,
+              columnId: column.id,
+              value,
+              numericValue,
+            });
           }
         }
 
-        await Promise.all(cellPromises);
+        await tx.cell.createMany({
+          data: cellsData,
+        });
 
         return base;
       });
