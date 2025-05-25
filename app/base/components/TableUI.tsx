@@ -7,6 +7,7 @@ import { getBaseColorClass } from "~/app/utils/colours";
 import { api } from "~/src/trpc/react";
 import TableCells from "./TableCells";
 import Loading from "~/app/_components/Loading";
+import ColumnVisibilityPanel from "./ColumnVisibilityPanel";
 
 interface TableUIProps {
   baseName: string;
@@ -18,6 +19,10 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   const [showViews, setShowViews] = useState<boolean>(true);
   const [newTableName, setNewTableName] = useState<string>("");
   const [showCreateForm, setShowCreateForm] = useState<boolean>(false);
+  
+  // Column visibility state
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+  const [showColumnPanel, setShowColumnPanel] = useState<boolean>(false);
 
   const utils = api.useUtils();
 
@@ -26,6 +31,26 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     { baseId: baseID },
     { enabled: !!baseID }
   );
+
+  // Get current table data for column visibility panel
+  const currentTableId = tableData?.[activeTab]?.id;
+  const { data: currentTableData } = api.table.getById.useQuery(
+    { id: currentTableId ?? 0 },
+    { enabled: !!currentTableId }
+  );
+
+  const spamRows = api.table.add100krows.useMutation({
+    onSuccess: async (data) => {
+    console.log(`Successfully added ${data.count} rows`);
+
+    if(currentTableId) {
+      await utils.table.infiniteScroll.invalidate({ tableId: currentTableId });
+    }
+  },
+  onError: (error) => {
+    console.error("Failed to add rows:", error);
+  }
+  })
 
   // Create table mutation
   const createTableMutation = api.table.create.useMutation({
@@ -54,6 +79,11 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     }
   }, [tableData, activeTab]);
 
+  // Reset hidden columns when switching tables
+  useEffect(() => {
+    setHiddenColumns(new Set());
+  }, [activeTab]);
+
   const handleCreateTable = () => {
     if (newTableName.trim()) {
       createTableMutation.mutate({
@@ -72,6 +102,18 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     }
   };
 
+  const handleToggleColumn = (columnId: string) => {
+    setHiddenColumns(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(columnId)) {
+        newSet.delete(columnId);
+      } else {
+        newSet.add(columnId);
+      }
+      return newSet;
+    });
+  };
+
   if (tablesLoading || !tableData || tableData.length === 0) {
     return(
       <div className='h-screen w-screen flex items-center justify-center'>
@@ -79,8 +121,6 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
       </div>
     )
   }
-
-  const currentTableId = tableData[activeTab]?.id;
 
   return(
     <main className="h-screen w-screen flex flex-col">
@@ -176,13 +216,43 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
         }`}
         onClick={() => setShowViews(prev => !prev)}
         >Views</button>
-        <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer">Hide Columns</button>
+        
+        <button 
+          className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer relative"
+          onClick={() => setShowColumnPanel(prev => !prev)}
+        >
+          Hide Columns
+          {hiddenColumns.size > 0 && (
+            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              {hiddenColumns.size}
+            </span>
+          )}
+          {showColumnPanel && currentTableData?.columns && (
+            <ColumnVisibilityPanel
+              columns={currentTableData.columns}
+              hiddenColumns={hiddenColumns}
+              onToggleColumn={handleToggleColumn}
+              onClose={() => setShowColumnPanel(false)}
+            />
+          )}
+        </button>
+        
         <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer">Filter</button>
         <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer">Sort</button>
 
         <div className="ml-auto">
-          <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer">
-            Add 100k rows
+          <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer disabled:cursor-not-allowed"
+          onClick={() => {
+            if(currentTableId) {
+              spamRows.mutate({
+                tableId: currentTableId,
+                count: 100000
+              });
+            }
+          }}
+          disabled={spamRows.isPending || !currentTableId}
+          >
+            {spamRows.isPending ? "Adding..." : "Add 100k rows"}
           </button>
         </div>
       </div>
@@ -203,9 +273,23 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
           </div>
         </div>
         <div className="flex-1 bg-gray-200 overflow-y-auto">
-          {currentTableId && <TableCells tableId={currentTableId} />}
+          {currentTableId && (
+            <TableCells 
+              tableId={currentTableId} 
+              hiddenColumns={hiddenColumns}
+              onToggleColumn={handleToggleColumn}
+            />
+          )}
         </div>
       </div>
+
+      {/* Column visibility panel */}
+      {showColumnPanel && (
+        <div 
+          className="fixed inset-0 z-40"
+          onClick={() => setShowColumnPanel(false)}
+        />
+      )}
     </main>
   );
 }

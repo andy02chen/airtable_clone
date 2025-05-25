@@ -13,6 +13,8 @@ import { AddColumnButton } from "./AddColumn";
 
 type TableCellsProps = {
   tableId: number;
+  hiddenColumns: Set<string>;
+  onToggleColumn: (columnId: string) => void;
 };
 
 type TableData = Record<string, string | number>;
@@ -32,31 +34,52 @@ function CellInput({
   onUpdate: (rowId: number, columnId: number, value: string) => void;
 }) {
   const [localValue, setLocalValue] = React.useState(initialValue);
+  const isNumberColumn = columnType && (columnType === 'NUMBER' || columnType === 'number' || String(columnType).toLowerCase() === 'number');
 
-  // Update local state when server value changes
+  // Helper function to validate and clean number input
+  const validateNumberValue = (value: string): string => {
+    if (!isNumberColumn || value === '') return value;
+
+    const regex = /^-?\d*\.?\d*/;
+    const match = regex.exec(value);
+    return match ? match[0] : '';
+  };
+
+  // Update local state when server value changes, with validation
   React.useEffect(() => {
-    setLocalValue(initialValue);
-  }, [initialValue]);
+    const validatedValue = validateNumberValue(initialValue);
+    setLocalValue(validatedValue);
+    
+    // If the server value was invalid and we cleaned it, update the server
+    if (isNumberColumn && validatedValue !== initialValue && initialValue !== '') {
+      onUpdate(rowId, columnId, validatedValue);
+    }
+  }, [initialValue, isNumberColumn, rowId, columnId, onUpdate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
 
-    // For number columns, validate and clear if invalid
-    if (columnType && (columnType === 'NUMBER' || columnType === 'number' || String(columnType).toLowerCase() === 'number')) {
-      if (newValue !== '') {
-        const numericValue = parseFloat(newValue);
-        if (isNaN(numericValue)) {
-          // Clear the cell and update backend with empty value
-          setLocalValue('');
-          onUpdate(rowId, columnId, '');
-          return;
-        }
+    if (isNumberColumn) {
+      // For number columns, validate in real-time
+      const validatedValue = validateNumberValue(newValue);
+      setLocalValue(validatedValue);
+      onUpdate(rowId, columnId, validatedValue);
+    } else {
+      // For non-number columns, accept any input
+      setLocalValue(newValue);
+      onUpdate(rowId, columnId, newValue);
+    }
+  };
+
+  const handleBlur = () => {
+    // On blur, ensure the value is still valid (extra safety check)
+    if (isNumberColumn) {
+      const validatedValue = validateNumberValue(localValue);
+      if (validatedValue !== localValue) {
+        setLocalValue(validatedValue);
+        onUpdate(rowId, columnId, validatedValue);
       }
     }
-
-    // Valid input - update normally
-    setLocalValue(newValue);
-    onUpdate(rowId, columnId, newValue);
   };
 
   return (
@@ -64,27 +87,85 @@ function CellInput({
       type="text"
       value={localValue}
       onChange={handleChange}
+      onBlur={handleBlur}
       className="w-full bg-transparent border-none outline-none px-2 py-1 focus:bg-blue-50"
     />
   );
 }
 
-export default function TableCells({ tableId }: TableCellsProps) {
-
+export default function TableCells({ tableId, hiddenColumns, onToggleColumn }: TableCellsProps) {
   const utils = api.useUtils();
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Fetch the specific table data
-  const { data: tableData, isLoading } = api.table.getById.useQuery(
-    { id: tableId },
-    { enabled: !!tableId }
+  const {
+    data: infiniteData,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = api.table.infiniteScroll.useInfiniteQuery(
+    { 
+      tableId, 
+      limit: 50 // Adjust based on your needs
+    },
+    {
+      enabled: !!tableId,
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+    }
   );
+
+  const loadMoreRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const allRows = React.useMemo(() => {
+    return infiniteData?.pages.flatMap(page => page.items) ?? [];
+  }, [infiniteData]);
+
+  const tableData = infiniteData?.pages[0]?.columns ?? [];
+
+  const handleScroll = React.useCallback(() => {
+    const container = tableContainerRef.current;
+    if (!container || !hasNextPage || isFetchingNextPage) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    // Trigger when user scrolls to within 100px of the bottom
+    if (scrollTop + clientHeight >= scrollHeight - 100) {
+      void fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  React.useEffect(() => {
+    const container = tableContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   // Create row
   const createRowMutation = api.base.createRow.useMutation({
     onSuccess: async () => {
       // Invalidate the specific table data query
-      await utils.table.getById.invalidate({ id: tableId });
+      await utils.table.infiniteScroll.invalidate({ tableId });
     },
     onError: (error) => {
       console.error("Failed to create row:", error);
@@ -94,7 +175,7 @@ export default function TableCells({ tableId }: TableCellsProps) {
   const createColumnMutation = api.base.createColumn.useMutation({
     onSuccess: async () => {
       // Invalidate the specific table data query
-      await utils.table.getById.invalidate({ id: tableId });
+      await utils.table.infiniteScroll.invalidate({ tableId });
     },
     onError: (error) => {
       console.error("Failed to create row:", error);
@@ -102,47 +183,62 @@ export default function TableCells({ tableId }: TableCellsProps) {
   });
 
   const updateCellMutation = api.base.updateCell.useMutation({
-    onMutate: async ({ rowId, column: columnId, value }) => {
-      // Cancel any outgoing refetches
-      await utils.table.getById.cancel({ id: tableId });
+  onMutate: async ({ rowId, column: columnId, value }) => {
+    // Cancel any outgoing refetches for the infinite query
+    await utils.table.infiniteScroll.cancel({ tableId });
 
-      // Snapshot the previous value
-      const previousData = utils.table.getById.getData({ id: tableId });
+    // Snapshot the previous value
+    const previousData = utils.table.infiniteScroll.getInfiniteData({ 
+      tableId, 
+      limit: 50
+    });
 
-      // Optimistically update the cache
-      utils.table.getById.setData({ id: tableId }, (old) => {
-        if (!old) return old;
-        
-        const updatedRows = old.rows?.map(row => {
-          if (row.id === rowId) {
-            return {
-              ...row,
-              [`column_${columnId}`]: value
-            };
-          }
-          return row;
-        });
-
-        return {
-          ...old,
-          rows: updatedRows
-        };
-      });
-
-      return { previousData };
-    },
-    onError: (err, variables, context) => {
-      console.error("Failed to update cell:", err);
-      // Revert on error
-      if (context?.previousData) {
-        utils.table.getById.setData({ id: tableId }, context.previousData);
-      }
-    },
-    onSettled: async () => {
-      // Always refetch after error or success to ensure we have the latest data
-      await utils.table.getById.invalidate({ id: tableId });
+    // If no cached data, skip optimistic update but still allow the mutation
+    if (!previousData) {
+      return { previousData: null };
     }
-  });
+
+    // Optimistically update the infinite query cache
+    utils.table.infiniteScroll.setInfiniteData({ 
+      tableId, 
+      limit: 50
+    }, (old) => {
+      if (!old) return old;
+      
+      return {
+        ...old,
+        pages: old.pages.map(page => ({
+          ...page,
+          items: page.items.map(row => {
+            if (row.id === rowId) {
+              return {
+                ...row,
+                [`column_${columnId}`]: value
+              };
+            }
+            return row;
+          })
+        }))
+      };
+    });
+
+    return { previousData };
+  },
+  onError: async (err, variables, context) => {
+    console.error("Failed to update cell:", err);
+    
+    // Only revert if we had previous data
+    if (context?.previousData) {
+      utils.table.infiniteScroll.setInfiniteData({ 
+        tableId, 
+        limit: 50 
+      }, context.previousData);
+    }
+    
+    // Always invalidate on error to get fresh data
+    await utils.table.infiniteScroll.invalidate({ tableId });
+  }
+});
 
   const handleCellUpdate = React.useCallback((rowId: number, columnKey: number, value: string) => {
   if (debounceTimeout.current) {
@@ -155,7 +251,7 @@ export default function TableCells({ tableId }: TableCellsProps) {
       column: columnKey,
       value,
     });
-  }, 750);
+  }, 500);
 }, [updateCellMutation]);
 
   const columns = React.useMemo(() => {
@@ -170,50 +266,53 @@ export default function TableCells({ tableId }: TableCellsProps) {
     ];
 
     // Only add dynamic columns if tableData and columns exist
-    if (tableData?.columns) {
-      const dynamicColumns = tableData.columns.map((column) => ({
-        id: `column_${column.id}`,
-        accessorKey: `column_${column.id}`,
-        header: column.name,
-        cell: (info: CellContext<TableData, unknown>) => {
-          const cellData = info.getValue();
-          const rowId = info.row.original.id;
-          const columnId = column.id;
-          
-          // Type check to ensure we have valid IDs
-          if (typeof rowId !== "number" || typeof columnId !== "number") {
-            return <span className="px-2 py-1 text-gray-400">Invalid cell</span>;
-          }
-          
-          // Create a unique key for this cell to maintain local state
-          const cellKey = `${rowId}_${columnId}`;
-          
-          // Ensure we have a valid string or number for the input value
-          const serverValue = typeof cellData === 'string' || typeof cellData === 'number' 
-            ? String(cellData) 
-            : '';
+    if (tableData.length > 0) {
+      const dynamicColumns = tableData
+        .filter(column => !hiddenColumns.has(`column_${column.id}`)) // Filter out hidden columns
+        .map((column) => ({
+          id: `column_${column.id}`,
+          accessorKey: `column_${column.id}`,
+          header: column.name,
+          cell: (info: CellContext<TableData, unknown>) => {
+            const cellData = info.getValue();
+            const rowId = info.row.original.id;
+            const columnId = column.id;
+            
+            // Type check to ensure we have valid IDs
+            if (typeof rowId !== "number" || typeof columnId !== "number") {
+              return <span className="px-2 py-1 text-gray-400">Invalid cell</span>;
+            }
+            
+            // Create a unique key for this cell to maintain local state
+            const cellKey = `${rowId}_${columnId}`;
+            
+            // Ensure we have a valid string or number for the input value
+            const serverValue = typeof cellData === 'string' || typeof cellData === 'number' 
+              ? String(cellData) 
+              : '';
 
-          return (
-            <CellInput
-              key={cellKey}
-              initialValue={serverValue}
-              rowId={rowId}
-              columnId={columnId}
-              onUpdate={handleCellUpdate}
-            />
-          );
-        },
-        size: 150,
-      }));
+            return (
+              <CellInput
+                key={cellKey}
+                initialValue={serverValue}
+                rowId={rowId}
+                columnId={columnId}
+                columnType={column.type}
+                onUpdate={handleCellUpdate}
+              />
+            );
+          },
+          size: 150,
+        }));
 
       return [...baseColumns, ...dynamicColumns];
     }
 
     return baseColumns;
-  }, [tableData?.columns, handleCellUpdate]);
+  }, [tableData, hiddenColumns, handleCellUpdate]);
 
   const table = useReactTable({
-    data: tableData?.rows ?? [],
+    data: allRows,
     columns: columns,
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
@@ -238,6 +337,10 @@ export default function TableCells({ tableId }: TableCellsProps) {
   }
 
   return(
+
+    <div 
+      ref={tableContainerRef}
+    >
     <table className="border border-gray-300 select-none">
       <thead className="bg-gray-100">
         {table.getHeaderGroups().map(headerGroup => (
@@ -282,6 +385,20 @@ export default function TableCells({ tableId }: TableCellsProps) {
         ))}
 
         <tr>
+          <td colSpan={columns.length}>
+            <div ref={loadMoreRef} className="h-1" />
+          </td>
+        </tr>
+
+        {isFetchingNextPage && (
+            <tr>
+              <td colSpan={columns.length} className="text-center py-4">
+                <Loading />
+              </td>
+            </tr>
+          )}
+
+        <tr>
           <td className="text-center border border-gray-300 cursor-pointer hover:bg-gray-100"
             onClick={() => {
               createRowMutation.mutate({ 
@@ -297,5 +414,9 @@ export default function TableCells({ tableId }: TableCellsProps) {
         </tr>
       </tbody>
     </table>
+    </div>
   )
 }
+
+// Export for use in parent component
+export { type TableCellsProps };

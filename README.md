@@ -4,8 +4,8 @@ TODO
 
 DO NEXT
 [ ] I want to see a table w/ 100k rows and scroll down without lag
-  [ ] Add a button I can click that will add 100k rows to my table.
-  [ ] Implement virtualized infinite scroll using TRPC’s hooks and TanStack virtualizer
+  [X] Add a button I can click that will add 100k rows to my table.
+  [X] Implement virtualized infinite scroll using TRPC’s hooks and TanStack virtualizer
 
 [ ] I want to be able to search across all the cells
 
@@ -13,7 +13,7 @@ DO NEXT
   [ ] Filters on columns: for both numbers (greater than, smaller than) and text (is not empty, is empty, contains, not contains, equal to)
   [ ] Simple sorting on columns: for text A→Z, Z→A, for numbers, do decreasing or increasing
   [ ] Can search through 
-  [ ] hide/show columns.
+  [X] hide/show columns.
 
 [ ] Search, filter, and sort have to be done at the database level
 
