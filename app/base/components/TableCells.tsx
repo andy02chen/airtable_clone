@@ -15,6 +15,10 @@ type TableCellsProps = {
   tableId: number;
   hiddenColumns: Set<string>;
   onToggleColumn: (columnId: string) => void;
+  sort?: {
+    columnId: number;
+    direction: 'asc' | 'desc';
+  };
 };
 
 type TableData = Record<string, string | number>;
@@ -93,7 +97,7 @@ function CellInput({
   );
 }
 
-export default function TableCells({ tableId, hiddenColumns, onToggleColumn }: TableCellsProps) {
+export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sort }: TableCellsProps) {
   const utils = api.useUtils();
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
@@ -106,9 +110,10 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn }: T
     hasNextPage,
     isFetchingNextPage,
   } = api.table.infiniteScroll.useInfiniteQuery(
-    { 
-      tableId, 
-      limit: 50 // Adjust based on your needs
+    {
+      tableId,
+      limit: 50,
+      sort, // Include sort state
     },
     {
       enabled: !!tableId,

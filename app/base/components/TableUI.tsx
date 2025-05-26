@@ -27,6 +27,11 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
 
   const [showSortPanel, setShowSortPanel] = useState<boolean>(false);
 
+  const [sort, setSort] = useState<{
+    columnId: number;
+    direction: 'asc' | 'desc';
+  } | undefined>(undefined);
+
   const utils = api.useUtils();
 
   // Get all tables for this base
@@ -256,9 +261,8 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
                 type: col.type === "TEXT" ? "text" : "number",
               }))}
               onDone={(sortConfig) => {
-                // Use columnId for API calls
-                console.log("Selected sort:", sortConfig);
-                
+                setSort(sortConfig);  // ← triggers re-fetch in useInfiniteQuery
+                setShowSortPanel(false);
               }}
               onClose={() => setShowSortPanel(false)}
             />
@@ -300,9 +304,10 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
         <div className="flex-1 bg-gray-200 overflow-y-auto">
           {currentTableId && (
             <TableCells 
-              tableId={currentTableId} 
+              tableId={currentTableId}
               hiddenColumns={hiddenColumns}
               onToggleColumn={handleToggleColumn}
+              sort={sort}
             />
           )}
         </div>

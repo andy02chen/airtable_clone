@@ -275,25 +275,26 @@ export const tableRouter = createTRPCRouter({
   }),
 
   infiniteScroll: protectedProcedure
-  .input(z.object({ 
-    tableId: z.number(),
-    limit: z.number().min(1).max(100).default(50),
-    cursor: z.number().optional(),
-  }))
-  .query(async ({ input, ctx }) => {
-    const { tableId, limit, cursor = 0 } = input;
+  .input(
+    z.object({
+      tableId: z.number(),
+      limit: z.number().min(1).max(100).default(50),
+      cursor: z.number().optional(),
+      sort: z.object({
+        columnId: z.number(),
+        direction: z.enum(['asc', 'desc']),
+      }).optional(),
+    })
+  )
+  .query(async ({ ctx, input }) => {
+    const { tableId, limit, cursor, sort } = input;
     const userId = ctx.session.user.id;
 
-    // Verify user has access to the table
+    // Verify table access
     const table = await ctx.db.table.findFirst({
       where: {
         id: tableId,
         base: { userId },
-      },
-      include: {
-        columns: {
-          orderBy: { order: 'asc' },
-        },
       },
     });
 
@@ -301,43 +302,129 @@ export const tableRouter = createTRPCRouter({
       throw new Error("Table not found or access denied");
     }
 
-    const rows = await ctx.db.row.findMany({
+    // Get columns for this table
+    const columns = await ctx.db.column.findMany({
       where: { tableId },
       orderBy: { order: 'asc' },
-      skip: cursor,
-      take: limit + 1, // Take one extra to check if there are more
-      include: {
-        cells: {
-          include: {
-            column: true,
-          },
-        },
-      },
     });
+
+    // Determine sort configuration
+    let sortColumn = null;
+    if (sort) {
+      sortColumn = columns.find(col => col.id === sort.columnId);
+    }
+
+    // Build the query based on whether we're sorting or not
+    let rawQuery: string;
+    let queryParams: any[] = [tableId];
+
+    if (sortColumn) {
+      const direction = sort!.direction.toUpperCase();
+      const sortField = sortColumn.type === 'NUMBER' ? 'numericValue' : 'value';
+      
+      if (cursor) {
+        rawQuery = `
+          SELECT r."id", r."order"
+          FROM "Row" r
+          LEFT JOIN "Cell" sort_cell ON sort_cell."rowId" = r."id" AND sort_cell."columnId" = $2
+          WHERE r."tableId" = $1 AND r."id" > $3
+          ORDER BY sort_cell."${sortField}" ${direction} NULLS LAST, r."order" ASC
+          LIMIT $4
+        `;
+        queryParams.push(sort!.columnId, cursor, limit + 1);
+      } else {
+        rawQuery = `
+          SELECT r."id", r."order"
+          FROM "Row" r
+          LEFT JOIN "Cell" sort_cell ON sort_cell."rowId" = r."id" AND sort_cell."columnId" = $2
+          WHERE r."tableId" = $1
+          ORDER BY sort_cell."${sortField}" ${direction} NULLS LAST, r."order" ASC
+          LIMIT $3
+        `;
+        queryParams.push(sort!.columnId, limit + 1);
+      }
+    } else {
+      // Default ordering by row order
+      if (cursor) {
+        rawQuery = `
+          SELECT r."id", r."order"
+          FROM "Row" r
+          WHERE r."tableId" = $1 AND r."id" > $2
+          ORDER BY r."order" ASC
+          LIMIT $3
+        `;
+        queryParams.push(cursor, limit + 1);
+      } else {
+        rawQuery = `
+          SELECT r."id", r."order"
+          FROM "Row" r
+          WHERE r."tableId" = $1
+          ORDER BY r."order" ASC
+          LIMIT $2
+        `;
+        queryParams.push(limit + 1);
+      }
+    }
+
+    // Execute the query
+    const rows = await ctx.db.$queryRawUnsafe<Array<{ id: number; order: number }>>(
+      rawQuery,
+      ...queryParams
+    );
 
     const hasNextPage = rows.length > limit;
     const items = hasNextPage ? rows.slice(0, -1) : rows;
 
-    // Transform the data
-    const transformedData = items.map((row) => {
-      const rowData: Record<string, string | number> = {
+    // Get all cells for these rows
+    const rowIds = items.map(row => row.id);
+    
+    if (rowIds.length === 0) {
+      return {
+        items: [],
+        nextCursor: undefined,
+        columns,
+      };
+    }
+
+    const cells = await ctx.db.cell.findMany({
+      where: {
+        rowId: { in: rowIds },
+        column: { tableId },
+      },
+      include: {
+        column: true,
+      },
+    });
+
+    // Transform data into the expected format
+    const transformedItems = items.map(row => {
+      const rowData: Record<string, any> = {
         id: row.id,
         order: row.order,
       };
 
-      table.columns.forEach((column) => {
-        const cell = row.cells.find((cell) => cell.columnId === column.id);
-        const displayValue = cell?.numericValue ?? cell?.value ?? "";
-        rowData[`column_${column.id}`] = displayValue;
+      // Add cell data for each column
+      columns.forEach(column => {
+        const cell = cells.find(c => c.rowId === row.id && c.columnId === column.id);
+        const key = `column_${column.id}`;
+        
+        if (cell) {
+          // Use numericValue for NUMBER columns, value for TEXT columns
+          rowData[key] = column.type === 'NUMBER' 
+            ? (cell.numericValue?.toString() ?? '') 
+            : (cell.value ?? '');
+        } else {
+          rowData[key] = '';
+        }
       });
 
       return rowData;
     });
 
     return {
-      items: transformedData,
-      nextCursor: hasNextPage ? cursor + limit : undefined,
-      columns: table.columns,
+      items: transformedItems,
+      nextCursor: hasNextPage ? items[items.length - 1]?.id : undefined,
+      columns,
     };
   }),
 
