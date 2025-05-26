@@ -8,6 +8,7 @@ import { api } from "~/src/trpc/react";
 import TableCells from "./TableCells";
 import Loading from "~/app/_components/Loading";
 import ColumnVisibilityPanel from "./ColumnVisibilityPanel";
+import SortPanel from "./SortPanel";
 
 interface TableUIProps {
   baseName: string;
@@ -24,6 +25,8 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
   const [showColumnPanel, setShowColumnPanel] = useState<boolean>(false);
 
+  const [showSortPanel, setShowSortPanel] = useState<boolean>(false);
+
   const utils = api.useUtils();
 
   // Get all tables for this base
@@ -35,11 +38,11 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   // Get current table ID
   const currentTableId = tableData?.[activeTab]?.id;
 
-  // OPTIMIZED: Use the fast getColumns endpoint instead of getById
   const { data: columnsData, isLoading: columnsLoading } = api.table.getColumns.useQuery(
     { tableId: currentTableId ?? 0 },
     { enabled: !!currentTableId }
   );
+
 
   const spamRows = api.table.add100krows.useMutation({
     onSuccess: async (data) => {
@@ -240,7 +243,27 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
         </div>
         
         <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer">Filter</button>
-        <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer">Sort</button>
+        <div className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer relative text-center"
+          onClick={() => setShowSortPanel(prev => !prev)}
+        >
+          Sort
+
+          {showSortPanel && columnsData && (
+            <SortPanel
+              columns={columnsData.map(col => ({
+                id: col.id,
+                name: col.name,
+                type: col.type === "TEXT" ? "text" : "number",
+              }))}
+              onDone={(sortConfig) => {
+                // Use columnId for API calls
+                console.log("Selected sort:", sortConfig);
+                
+              }}
+              onClose={() => setShowSortPanel(false)}
+            />
+          )}
+        </div>
 
         <div className="ml-auto">
           <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer disabled:cursor-not-allowed"
