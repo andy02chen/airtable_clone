@@ -32,10 +32,12 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     { enabled: !!baseID }
   );
 
-  // Get current table data for column visibility panel
+  // Get current table ID
   const currentTableId = tableData?.[activeTab]?.id;
-  const { data: currentTableData } = api.table.getById.useQuery(
-    { id: currentTableId ?? 0 },
+
+  // OPTIMIZED: Use the fast getColumns endpoint instead of getById
+  const { data: columnsData, isLoading: columnsLoading } = api.table.getColumns.useQuery(
+    { tableId: currentTableId ?? 0 },
     { enabled: !!currentTableId }
   );
 
@@ -217,7 +219,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
         onClick={() => setShowViews(prev => !prev)}
         >Views</button>
         
-        <button 
+        <div 
           className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer relative"
           onClick={() => setShowColumnPanel(prev => !prev)}
         >
@@ -227,15 +229,15 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
               {hiddenColumns.size}
             </span>
           )}
-          {showColumnPanel && currentTableData?.columns && (
+          {showColumnPanel && columnsData && (
             <ColumnVisibilityPanel
-              columns={currentTableData.columns}
+              columns={columnsData}
               hiddenColumns={hiddenColumns}
               onToggleColumn={handleToggleColumn}
               onClose={() => setShowColumnPanel(false)}
             />
           )}
-        </button>
+        </div>
         
         <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer">Filter</button>
         <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer">Sort</button>

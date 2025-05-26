@@ -340,4 +340,34 @@ export const tableRouter = createTRPCRouter({
       columns: table.columns,
     };
   }),
+
+  getColumns: protectedProcedure
+    .input(z.object({ tableId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      const userId = ctx.session.user.id;
+
+      const table = await ctx.db.table.findFirst({
+        where: {
+          id: input.tableId,
+          base: { userId },
+        },
+      });
+
+      if (!table) {
+        throw new Error("Table not found or access denied");
+      }
+
+      const columns = await ctx.db.column.findMany({
+        where: { tableId: input.tableId },
+        orderBy: { order: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          order: true,
+        },
+      });
+
+      return columns;
+    }),
 });
