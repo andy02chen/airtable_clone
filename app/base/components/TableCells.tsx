@@ -21,7 +21,7 @@ type TableCellsProps = {
   };
 };
 
-type TableData = Record<string, string | number>;
+type TableData = Record<string, string | number | null>;
 
 // Separate component to handle individual cell input with local state
 function CellInput({ 

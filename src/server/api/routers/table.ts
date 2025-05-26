@@ -316,7 +316,7 @@ export const tableRouter = createTRPCRouter({
 
     // Build the query based on whether we're sorting or not
     let rawQuery: string;
-    let queryParams: any[] = [tableId];
+    const queryParams: (number | string | null)[] = [tableId];
 
     if (sortColumn) {
       const direction = sort!.direction.toUpperCase();
@@ -398,7 +398,7 @@ export const tableRouter = createTRPCRouter({
 
     // Transform data into the expected format
     const transformedItems = items.map(row => {
-      const rowData: Record<string, any> = {
+      const rowData: Record<string, string | number | null> = {
         id: row.id,
         order: row.order,
       };

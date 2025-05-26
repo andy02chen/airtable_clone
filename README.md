@@ -3,12 +3,12 @@ TODO
 [ ] Just focus on the main page with table, columns, and cells.
 
 DO NEXT
-[ ] Change the sort using column names
 [ ] Sort with multiple fields may
 
 [ ] I want to be able to create a 'view' of a table and save the following configurations
   [ ] Filters on columns: for both numbers (greater than, smaller than) and text (is not empty, is empty, contains, not contains, equal to)
-  [ ] Simple sorting on columns: for text A→Z, Z→A, for numbers, do decreasing or increasing
+  [ ] Simple sorting on columns: for text A→Z, Z→A, 
+  [X]for numbers, do decreasing or increasing
   [ ] Can search through 
   [X] hide/show columns.
 
