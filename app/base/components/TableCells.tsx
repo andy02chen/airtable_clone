@@ -21,7 +21,7 @@ type TableCellsProps = {
   tableId: number;
   hiddenColumns: Set<string>;
   onToggleColumn: (columnId: string) => void;
-  sortConfigs?: SortConfig[]; // Changed from sort to sortConfigs and made it an array
+  sortConfigs?: SortConfig[];
 };
 
 type TableData = Record<string, string | number | null>;
@@ -41,6 +41,7 @@ function CellInput({
   onUpdate: (rowId: number, columnId: number, value: string) => void;
 }) {
   const [localValue, setLocalValue] = React.useState(initialValue);
+  const [lastSavedValue, setLastSavedValue] = React.useState(initialValue);
   const isNumberColumn = columnType && (columnType === 'NUMBER' || columnType === 'number' || String(columnType).toLowerCase() === 'number');
 
   // Helper function to validate and clean number input
@@ -56,6 +57,7 @@ function CellInput({
   React.useEffect(() => {
     const validatedValue = validateNumberValue(initialValue);
     setLocalValue(validatedValue);
+    setLastSavedValue(validatedValue);
     
     // If the server value was invalid and we cleaned it, update the server
     if (isNumberColumn && validatedValue !== initialValue && initialValue !== '') {
@@ -70,22 +72,41 @@ function CellInput({
       // For number columns, validate in real-time
       const validatedValue = validateNumberValue(newValue);
       setLocalValue(validatedValue);
-      onUpdate(rowId, columnId, validatedValue);
+      
+      // Only trigger update if value actually changed
+      if (validatedValue !== lastSavedValue) {
+        onUpdate(rowId, columnId, validatedValue);
+        setLastSavedValue(validatedValue);
+      }
     } else {
       // For non-number columns, accept any input
       setLocalValue(newValue);
-      onUpdate(rowId, columnId, newValue);
+      
+      // Only trigger update if value actually changed
+      if (newValue !== lastSavedValue) {
+        onUpdate(rowId, columnId, newValue);
+        setLastSavedValue(newValue);
+      }
     }
   };
 
   const handleBlur = () => {
-    // On blur, ensure the value is still valid (extra safety check)
+    // On blur, ensure the value is still valid and saved
     if (isNumberColumn) {
       const validatedValue = validateNumberValue(localValue);
       if (validatedValue !== localValue) {
         setLocalValue(validatedValue);
-        onUpdate(rowId, columnId, validatedValue);
+        if (validatedValue !== lastSavedValue) {
+          onUpdate(rowId, columnId, validatedValue);
+          setLastSavedValue(validatedValue);
+        }
       }
+    }
+    
+    // Final save on blur if there are unsaved changes
+    if (localValue !== lastSavedValue) {
+      onUpdate(rowId, columnId, localValue);
+      setLastSavedValue(localValue);
     }
   };
 
@@ -116,11 +137,13 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
     {
       tableId,
       limit: 50,
-      sorts: sortConfigs, // Use the converted sort format
+      sorts: sortConfigs,
     },
     {
       enabled: !!tableId,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
+      // Add staleTime to prevent unnecessary refetches
+      staleTime: 1000 * 60 * 5, // 5 minutes
     }
   );
 
@@ -186,81 +209,92 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
       await utils.table.infiniteScroll.invalidate({ tableId });
     },
     onError: (error) => {
-      console.error("Failed to create row:", error);
+      console.error("Failed to create column:", error);
     }
   });
 
   const updateCellMutation = api.base.updateCell.useMutation({
-  onMutate: async ({ rowId, column: columnId, value }) => {
-    // Cancel any outgoing refetches for the infinite query
-    await utils.table.infiniteScroll.cancel({ tableId });
-
-    // Snapshot the previous value
-    const previousData = utils.table.infiniteScroll.getInfiniteData({ 
-      tableId, 
-      limit: 50
-    });
-
-    // If no cached data, skip optimistic update but still allow the mutation
-    if (!previousData) {
-      return { previousData: null };
-    }
-
-    // Optimistically update the infinite query cache
-    utils.table.infiniteScroll.setInfiniteData({ 
-      tableId, 
-      limit: 50
-    }, (old) => {
-      if (!old) return old;
+    onMutate: async ({ rowId, column: columnId, value }) => {
+      console.log('Updating cell:', { rowId, columnId, value }); // Debug log
       
-      return {
-        ...old,
-        pages: old.pages.map(page => ({
-          ...page,
-          items: page.items.map(row => {
-            if (row.id === rowId) {
-              return {
-                ...row,
-                [`column_${columnId}`]: value
-              };
-            }
-            return row;
-          })
-        }))
-      };
-    });
+      // Cancel any outgoing refetches for the infinite query
+      await utils.table.infiniteScroll.cancel({ tableId });
 
-    return { previousData };
-  },
-  onError: async (err, variables, context) => {
-    console.error("Failed to update cell:", err);
-    
-    // Only revert if we had previous data
-    if (context?.previousData) {
+      // Snapshot the previous value
+      const previousData = utils.table.infiniteScroll.getInfiniteData({ 
+        tableId, 
+        limit: 50,
+        sorts: sortConfigs
+      });
+
+      // Optimistically update the infinite query cache
       utils.table.infiniteScroll.setInfiniteData({ 
         tableId, 
-        limit: 50 
-      }, context.previousData);
+        limit: 50,
+        sorts: sortConfigs
+      }, (old) => {
+        if (!old) return old;
+        
+        return {
+          ...old,
+          pages: old.pages.map(page => ({
+            ...page,
+            items: page.items.map(row => {
+              if (row.id === rowId) {
+                return {
+                  ...row,
+                  [`column_${columnId}`]: value
+                };
+              }
+              return row;
+            })
+          }))
+        };
+      });
+
+      return { previousData };
+    },
+    onSuccess: (data, variables) => {
+      console.log('Cell update successful:', { data, variables }); // Debug log
+      // Don't invalidate on success - trust the optimistic update
+      // Only invalidate if there's a discrepancy
+    },
+    onError: async (err, variables, context) => {
+      console.error("Failed to update cell:", err, variables); // Enhanced error log
+      
+      // Revert optimistic update on error
+      if (context?.previousData) {
+        utils.table.infiniteScroll.setInfiniteData({ 
+          tableId, 
+          limit: 50,
+          sorts: sortConfigs
+        }, context.previousData);
+      }
+      
+      // Always invalidate on error to get fresh data
+      await utils.table.infiniteScroll.invalidate({ tableId });
+    },
+    onSettled: () => {
+      // Optional: You could add a subtle invalidation here after a delay
+      // to ensure data consistency without being too aggressive
     }
-    
-    // Always invalidate on error to get fresh data
-    await utils.table.infiniteScroll.invalidate({ tableId });
-  }
-});
+  });
 
   const handleCellUpdate = React.useCallback((rowId: number, columnKey: number, value: string) => {
-  if (debounceTimeout.current) {
-    clearTimeout(debounceTimeout.current);
-  }
+    console.log('Handling cell update:', { rowId, columnKey, value }); // Debug log
+    
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
 
-  debounceTimeout.current = setTimeout(() => {
-    updateCellMutation.mutate({
-      rowId,
-      column: columnKey,
-      value,
-    });
-  }, 500);
-}, [updateCellMutation]);
+    debounceTimeout.current = setTimeout(() => {
+      updateCellMutation.mutate({
+        rowId,
+        column: columnKey,
+        value,
+      });
+    }, 300); // Reduced debounce time for better responsiveness
+  }, [updateCellMutation]);
 
   const columns = React.useMemo(() => {
     // Always return a consistent array structure
