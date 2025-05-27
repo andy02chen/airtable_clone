@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/src/server/api/trpc";
 import { faker } from '@faker-js/faker';
+import { Prisma } from "@prisma/client";
 
 export const tableRouter = createTRPCRouter({
   create: protectedProcedure
@@ -192,80 +193,76 @@ export const tableRouter = createTRPCRouter({
       throw new Error("Table not found or access denied");
     }
 
-    // Get the current max order outside transaction
+    // Get the current max order
     const lastOrderResult = await ctx.db.$queryRaw<{ max_order: number | null }[]>`
-      SELECT MAX("order") AS max_order FROM "Row" WHERE "tableId" = ${tableId};
+      SELECT MAX("order") AS max_order FROM "Row" WHERE "tableId" = ${tableId}
     `;
     const lastOrder = lastOrderResult[0]?.max_order ?? -1;
 
-    // Process in chunks of 10,000 rows
-    const chunkSize = 500;
-    let processed = 0;
+    // Single transaction with optimized bulk insert
+    await ctx.db.$transaction(async (tx) => {
+      // Create all rows at once
+      const newRows = await tx.$queryRaw<{ id: number, order: number }[]>`
+        INSERT INTO "Row" ("order", "tableId")
+        SELECT 
+          generate_series(${lastOrder + 1}, ${lastOrder + count}), 
+          ${tableId}
+        RETURNING "id", "order"
+      `;
 
-    while (processed < count) {
-      const currentChunk = Math.min(chunkSize, count - processed);
+      // Prepare all cell data
+      type CellData = {
+        rowId: number;
+        columnId: number;
+        value: string | null;
+        numericValue: number | null;
+      };
       
-      await ctx.db.$transaction(async (tx) => {
-        // Create rows for this chunk
-        const newRows = await tx.$queryRaw<{ id: number, order: number }[]>`
-          INSERT INTO "Row" ("order", "tableId")
-          SELECT 
-            generate_series(${lastOrder + 1 + processed}, ${lastOrder + processed + currentChunk}), 
-            ${tableId}
-          RETURNING "id", "order";
-        `;
+      const cellsData: CellData[] = [];
+      
+      for (const row of newRows) {
+        for (const column of table.columns) {
+          let value: string | null = null;
+          let numericValue: number | null = null;
 
-        // Prepare cells with faker data for this chunk
-        const cellsData: { rowId: number; columnId: number; value: string | null; numericValue: number | null }[] = [];
-        
-        for (const row of newRows) {
-          for (const column of table.columns) {
-            let value: string | null = null;
-            let numericValue: number | null = null;
-
-            // Generate faker data based on column name (matching your create logic)
-            switch (column.name.toLowerCase()) {
-              case "first name":
-                value = faker.person.firstName();
-                break;
-              case "last name":
-                value = faker.person.lastName();
-                break;
-              case "age":
-                numericValue = faker.number.int({ min: 18, max: 99 });
-                break;
-              default:
-                // For non-default columns, keep as null or set a default value
-                value = null;
-                numericValue = null;
-            }
-
-            cellsData.push({
-              rowId: row.id,
-              columnId: column.id,
-              value,
-              numericValue,
-            });
+          switch (column.name.toLowerCase()) {
+            case "first name":
+              value = faker.person.firstName();
+              break;
+            case "last name":
+              value = faker.person.lastName();
+              break;
+            case "age":
+              numericValue = faker.number.int({ min: 18, max: 99 });
+              break;
+            default:
+              value = null;
+              numericValue = null;
           }
-        }
 
-        // Insert cells in smaller batches
-        const batchSize = 50;
-        for (let i = 0; i < cellsData.length; i += batchSize) {
-          const batch = cellsData.slice(i, i + batchSize);
-          await tx.$queryRaw`
-            INSERT INTO "Cell" ("rowId", "columnId", "value", "numericValue")
-            SELECT
-              unnest(${batch.map(c => c.rowId)}::int[]),
-              unnest(${batch.map(c => c.columnId)}::int[]),
-              unnest(${batch.map(c => c.value ?? null)}::text[]),
-              unnest(${batch.map(c => c.numericValue ?? null)}::numeric[])
-          `;
+          cellsData.push({
+            rowId: row.id,
+            columnId: column.id,
+            value,
+            numericValue
+          });
         }
-      });
+      }
 
-      processed += currentChunk;
-    }
+      // Single bulk insert for all cells
+      if (cellsData.length > 0) {
+        const values = cellsData.map(cell => 
+          `(${cell.rowId}, ${cell.columnId}, ${cell.value ? `'${cell.value.replace(/'/g, "''")}'` : 'NULL'}, ${cell.numericValue ?? 'NULL'})`
+        ).join(',');
+
+        await tx.$executeRaw`
+          INSERT INTO "Cell" ("rowId", "columnId", "value", "numericValue")
+          VALUES ${Prisma.raw(values)}
+        `;
+      }
+    }, {
+      timeout: 30000, // 30 seconds timeout
+    });
 
     return {
       count,

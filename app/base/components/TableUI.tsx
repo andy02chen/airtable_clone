@@ -281,7 +281,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
           }}
           disabled={spamRows.isPending || !currentTableId}
           >
-            {spamRows.isPending ? "Adding..." : "Add 100k rows"}
+            {spamRows.isPending ? "Adding..." : "Add 5k rows"}
           </button>
         </div>
       </div>

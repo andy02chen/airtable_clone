@@ -3,6 +3,7 @@ TODO
 [ ] Just focus on the main page with table, columns, and cells.
 
 DO NEXT
+[ ] Issue with adding rows
 [ ] Sort with multiple fields
 
 [ ] I want to be able to create a 'view' of a table and save the following configurations
