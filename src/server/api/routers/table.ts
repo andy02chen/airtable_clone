@@ -277,14 +277,15 @@ export const tableRouter = createTRPCRouter({
       tableId: z.number(),
       limit: z.number().min(1).max(100).default(50),
       cursor: z.number().optional(),
-      sort: z.object({
+      sorts: z.array(z.object({
         columnId: z.number(),
         direction: z.enum(['asc', 'desc']),
-      }).optional(),
+        priority: z.number(),
+      })).optional(),
     })
   )
   .query(async ({ ctx, input }) => {
-    const { tableId, limit, cursor, sort } = input;
+    const { tableId, limit, cursor, sorts } = input;
     const userId = ctx.session.user.id;
 
     // Verify table access
@@ -305,40 +306,73 @@ export const tableRouter = createTRPCRouter({
       orderBy: { order: 'asc' },
     });
 
-    // Determine sort configuration
-    let sortColumn = null;
-    if (sort) {
-      sortColumn = columns.find(col => col.id === sort.columnId);
+    // Define proper types for sort columns using the actual column type from database
+    type ColumnWithSort = {
+      column: typeof columns[0]; // Use the actual type from the query
+      direction: string;
+    };
+
+    // Process multiple sorts
+    let sortColumns: ColumnWithSort[] = [];
+    if (sorts && sorts.length > 0) {
+      // Sort by priority and validate columns exist
+      const validSorts = sorts
+        .sort((a, b) => a.priority - b.priority) // Sort by priority
+        .map(sort => {
+          const column = columns.find(col => col.id === sort.columnId);
+          return column ? { column, direction: sort.direction.toUpperCase() } : null;
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null); // Better type guard
+      
+      sortColumns = validSorts;
     }
 
-    // Build the query based on whether we're sorting or not
+    // Build the query with multiple sorts
     let rawQuery: string;
     const queryParams: (number | string | null)[] = [tableId];
 
-    if (sortColumn) {
-      const direction = sort!.direction.toUpperCase();
-      const sortField = sortColumn.type === 'NUMBER' ? 'numericValue' : 'value';
+    if (sortColumns.length > 0) {
+      // Build ORDER BY clause with multiple columns
+      const orderByParts = sortColumns.map((sortCol, index) => {
+        const sortField = sortCol.column.type === 'NUMBER' ? 'numericValue' : 'value';
+        const joinAlias = `sort_cell_${index}`;
+        return `${joinAlias}."${sortField}" ${sortCol.direction} NULLS LAST`;
+      });
       
+      // Build JOIN clauses
+      const joinParts = sortColumns.map((sortCol, index) => {
+        queryParams.push(sortCol.column.id);
+        const joinAlias = `sort_cell_${index}`;
+        const paramIndex = queryParams.length;
+        return `LEFT JOIN "Cell" ${joinAlias} ON ${joinAlias}."rowId" = r."id" AND ${joinAlias}."columnId" = $${paramIndex}`;
+      });
+
+      const orderByClause = orderByParts.join(', ') + ', r."order" ASC';
+      const joinClause = joinParts.join(' ');
+
       if (cursor) {
+        const cursorParamIndex = queryParams.length + 1;
+        const limitParamIndex = queryParams.length + 2;
         rawQuery = `
           SELECT r."id", r."order"
           FROM "Row" r
-          LEFT JOIN "Cell" sort_cell ON sort_cell."rowId" = r."id" AND sort_cell."columnId" = $2
-          WHERE r."tableId" = $1 AND r."id" > $3
-          ORDER BY sort_cell."${sortField}" ${direction} NULLS LAST, r."order" ASC
-          LIMIT $4
+          ${joinClause}
+          WHERE r."tableId" = $1 AND r."id" > $${cursorParamIndex}
+          ORDER BY ${orderByClause}
+          LIMIT $${limitParamIndex}
         `;
-        queryParams.push(sort!.columnId, cursor, limit + 1);
+        queryParams.push(cursor, limit + 1);
       } else {
+        const limitParamIndex = queryParams.length + 1;
         rawQuery = `
           SELECT r."id", r."order"
           FROM "Row" r
-          LEFT JOIN "Cell" sort_cell ON sort_cell."rowId" = r."id" AND sort_cell."columnId" = $2
+          ${joinClause}
           WHERE r."tableId" = $1
-          ORDER BY sort_cell."${sortField}" ${direction} NULLS LAST, r."order" ASC
-          LIMIT $3
+          ORDER BY ${orderByClause}
+          LIMIT $${limitParamIndex}
         `;
-        queryParams.push(sort!.columnId, limit + 1);
+        queryParams.push(limit + 1);
       }
     } else {
       // Default ordering by row order
@@ -400,13 +434,11 @@ export const tableRouter = createTRPCRouter({
         order: row.order,
       };
 
-      // Add cell data for each column
       columns.forEach(column => {
         const cell = cells.find(c => c.rowId === row.id && c.columnId === column.id);
         const key = `column_${column.id}`;
         
         if (cell) {
-          // Use numericValue for NUMBER columns, value for TEXT columns
           rowData[key] = column.type === 'NUMBER' 
             ? (cell.numericValue?.toString() ?? '') 
             : (cell.value ?? '');

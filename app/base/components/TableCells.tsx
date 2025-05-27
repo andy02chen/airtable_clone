@@ -11,14 +11,17 @@ import { api } from "~/src/trpc/react";
 import Loading from "~/app/_components/Loading";
 import { AddColumnButton } from "./AddColumn";
 
+type SortConfig = {
+  columnId: number;
+  direction: 'asc' | 'desc';
+  priority: number;
+}
+
 type TableCellsProps = {
   tableId: number;
   hiddenColumns: Set<string>;
   onToggleColumn: (columnId: string) => void;
-  sort?: {
-    columnId: number;
-    direction: 'asc' | 'desc';
-  };
+  sortConfigs?: SortConfig[]; // Changed from sort to sortConfigs and made it an array
 };
 
 type TableData = Record<string, string | number | null>;
@@ -97,7 +100,7 @@ function CellInput({
   );
 }
 
-export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sort }: TableCellsProps) {
+export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sortConfigs }: TableCellsProps) {
   const utils = api.useUtils();
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
@@ -113,7 +116,7 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
     {
       tableId,
       limit: 50,
-      sort, // Include sort state
+      sorts: sortConfigs, // Use the converted sort format
     },
     {
       enabled: !!tableId,
@@ -342,7 +345,6 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
   }
 
   return(
-
     <div 
       ref={tableContainerRef}
     >
@@ -424,4 +426,4 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
 }
 
 // Export for use in parent component
-export { type TableCellsProps };
+export { type TableCellsProps, type SortConfig };

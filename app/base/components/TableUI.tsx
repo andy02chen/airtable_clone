@@ -15,6 +15,12 @@ interface TableUIProps {
   baseID: number;
 }
 
+type SortConfig = {
+  columnId: number;
+  direction: 'asc' | 'desc';
+  priority: number;
+}
+
 export default function TableUI({ baseName, baseID } : TableUIProps) {
   const [activeTab, setActiveTab] = useState<number>(0);
   const [showViews, setShowViews] = useState<boolean>(true);
@@ -27,10 +33,8 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
 
   const [showSortPanel, setShowSortPanel] = useState<boolean>(false);
 
-  const [sort, setSort] = useState<{
-    columnId: number;
-    direction: 'asc' | 'desc';
-  } | undefined>(undefined);
+  // Updated to support multiple sort configurations
+  const [sortConfigs, setSortConfigs] = useState<SortConfig[]>([]);
 
   const utils = api.useUtils();
 
@@ -47,7 +51,6 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     { tableId: currentTableId ?? 0 },
     { enabled: !!currentTableId }
   );
-
 
   const spamRows = api.table.add100krows.useMutation({
     onSuccess: async (data) => {
@@ -89,9 +92,10 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     }
   }, [tableData, activeTab]);
 
-  // Reset hidden columns when switching tables
+  // Reset hidden columns and sort when switching tables
   useEffect(() => {
     setHiddenColumns(new Set());
+    setSortConfigs([]);
   }, [activeTab]);
 
   const handleCreateTable = () => {
@@ -252,6 +256,11 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
           onClick={() => setShowSortPanel(prev => !prev)}
         >
           Sort
+          {sortConfigs.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              {sortConfigs.length}
+            </span>
+          )}
 
           {showSortPanel && columnsData && (
             <SortPanel
@@ -260,11 +269,12 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
                 name: col.name,
                 type: col.type === "TEXT" ? "text" : "number",
               }))}
-              onDone={(sortConfig) => {
-                setSort(sortConfig);  // ← triggers re-fetch in useInfiniteQuery
+              onDone={(newSortConfigs) => {
+                setSortConfigs(newSortConfigs);
                 setShowSortPanel(false);
               }}
               onClose={() => setShowSortPanel(false)}
+              initialSortConfigs={sortConfigs}
             />
           )}
         </div>
@@ -307,7 +317,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
               tableId={currentTableId}
               hiddenColumns={hiddenColumns}
               onToggleColumn={handleToggleColumn}
-              sort={sort}
+              sortConfigs={sortConfigs}
             />
           )}
         </div>
