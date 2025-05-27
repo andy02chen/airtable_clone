@@ -275,7 +275,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
             if(currentTableId) {
               spamRows.mutate({
                 tableId: currentTableId,
-                count: 100000
+                count: 5000
               });
             }
           }}
@@ -318,6 +318,13 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
         <div 
           className="fixed inset-0 z-40"
           onClick={() => setShowColumnPanel(false)}
+        />
+      )}
+
+      {showSortPanel && (
+        <div 
+          className="fixed inset-0 z-40"
+          onClick={() => setShowSortPanel(false)}
         />
       )}
     </main>

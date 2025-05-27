@@ -171,7 +171,7 @@ export const tableRouter = createTRPCRouter({
   add100krows: protectedProcedure
   .input(z.object({
     tableId: z.number(),
-    count: z.number().min(1).max(100000).default(100000)
+    count: z.number().min(1).max(5000).default(5000)
   }))
   .mutation(async ({ ctx, input }) => {
     const { tableId, count } = input;
@@ -199,7 +199,7 @@ export const tableRouter = createTRPCRouter({
     const lastOrder = lastOrderResult[0]?.max_order ?? -1;
 
     // Process in chunks of 10,000 rows
-    const chunkSize = 10000;
+    const chunkSize = 500;
     let processed = 0;
 
     while (processed < count) {
@@ -250,7 +250,7 @@ export const tableRouter = createTRPCRouter({
         }
 
         // Insert cells in smaller batches
-        const batchSize = 2000;
+        const batchSize = 50;
         for (let i = 0; i < cellsData.length; i += batchSize) {
           const batch = cellsData.slice(i, i + batchSize);
           await tx.$queryRaw`

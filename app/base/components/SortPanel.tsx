@@ -18,7 +18,7 @@ export default function SortPanel({ columns, onDone, onClose }: SortPanelProps) 
 
   return (
     <div
-      className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border w-80 max-h-80 overflow-hidden z-50"
+      className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border w-auto max-h-80 overflow-hidden z-50"
       onClick={handlePanelClick}
     >
       <div className="flex items-center justify-between p-4 border-b">
@@ -32,49 +32,51 @@ export default function SortPanel({ columns, onDone, onClose }: SortPanelProps) 
       </div>
 
       <div className="p-4 space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Select Column:</label>
-          <select
-            value={selectedColumnId ?? ''}
-            onChange={e => setSelectedColumnId(Number(e.target.value))}
-            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="" disabled>Select column...</option>
-            {columns.map(col => (
-              <option key={col.id} value={col.id}>
-                {col.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {selectedColumnId !== null && (
+        <div className='flex gap-4'>
           <div>
-            <label className="block text-sm font-medium mb-1">Sort Direction:</label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSortDirection('asc')}
-                className={`flex-1 px-2 py-1 rounded border text-sm transition ${
-                  sortDirection === 'asc'
-                    ? 'bg-blue-500 text-white'
-                    : 'border-gray-300 hover:bg-gray-100'
-                }`}
-              >
-                {currentColumn?.type === 'text' ? 'A → Z' : '↑ Increasing'}
-              </button>
-              <button
-                onClick={() => setSortDirection('desc')}
-                className={`flex-1 px-2 py-1 rounded border text-sm transition ${
-                  sortDirection === 'desc'
-                    ? 'bg-blue-500 text-white'
-                    : 'border-gray-300 hover:bg-gray-100'
-                }`}
-              >
-                {currentColumn?.type === 'text' ? 'Z → A' : '↓ Decreasing'}
-              </button>
-            </div>
+            <label className="w-40 block text-sm font-medium mb-1">Select Column:</label>
+            <select
+              value={selectedColumnId ?? ''}
+              onChange={e => setSelectedColumnId(Number(e.target.value))}
+              className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="" disabled>Select column...</option>
+              {columns.map(col => (
+                <option key={col.id} value={col.id}>
+                  {col.name}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+
+          {selectedColumnId !== null && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Sort Direction:</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSortDirection('asc')}
+                  className={`w-24 px-2 py-1 rounded border text-sm transition  ${
+                    sortDirection === 'asc'
+                      ? 'bg-blue-500 text-white'
+                      : 'border-gray-300 hover:bg-gray-100'
+                  }`}
+                >
+                  {currentColumn?.type === 'text' ? 'A → Z' : '↑ Asc'}
+                </button>
+                <button
+                  onClick={() => setSortDirection('desc')}
+                  className={`w-24 px-2 py-1 rounded border text-sm transition  ${
+                    sortDirection === 'desc'
+                      ? 'bg-blue-500 text-white'
+                      : 'border-gray-300 hover:bg-gray-100'
+                  }`}
+                >
+                  {currentColumn?.type === 'text' ? 'Z → A' : '↓ Desc'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="flex justify-end">
           <button
