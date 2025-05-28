@@ -10,6 +10,7 @@ import { api } from "~/src/trpc/react";
 
 import Loading from "~/app/_components/Loading";
 import { AddColumnButton } from "./AddColumn";
+import { type FilterConfig } from "./FilterPanel"; 
 
 type SortConfig = {
   columnId: number;
@@ -22,6 +23,7 @@ type TableCellsProps = {
   hiddenColumns: Set<string>;
   onToggleColumn: (columnId: string) => void;
   sortConfigs?: SortConfig[];
+  filterConfigs?: FilterConfig[];
 };
 
 type TableData = Record<string, string | number | null>;
@@ -121,7 +123,7 @@ function CellInput({
   );
 }
 
-export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sortConfigs }: TableCellsProps) {
+export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sortConfigs, filterConfigs }: TableCellsProps) {
   const utils = api.useUtils();
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
@@ -138,6 +140,7 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
       tableId,
       limit: 50,
       sorts: sortConfigs,
+      filters: filterConfigs
     },
     {
       enabled: !!tableId,
@@ -224,14 +227,16 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
       const previousData = utils.table.infiniteScroll.getInfiniteData({ 
         tableId, 
         limit: 50,
-        sorts: sortConfigs
+        sorts: sortConfigs,
+        filters: filterConfigs
       });
 
       // Optimistically update the infinite query cache
       utils.table.infiniteScroll.setInfiniteData({ 
         tableId, 
         limit: 50,
-        sorts: sortConfigs
+        sorts: sortConfigs,
+        filters: filterConfigs
       }, (old) => {
         if (!old) return old;
         
@@ -267,7 +272,8 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
         utils.table.infiniteScroll.setInfiniteData({ 
           tableId, 
           limit: 50,
-          sorts: sortConfigs
+          sorts: sortConfigs,
+          filters: filterConfigs
         }, context.previousData);
       }
       

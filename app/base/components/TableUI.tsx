@@ -9,6 +9,8 @@ import TableCells from "./TableCells";
 import Loading from "~/app/_components/Loading";
 import ColumnVisibilityPanel from "./ColumnVisibilityPanel";
 import SortPanel from "./SortPanel";
+import FilterPanel from "./FilterPanel";
+import { type FilterConfig } from "./FilterPanel"; 
 
 interface TableUIProps {
   baseName: string;
@@ -32,9 +34,11 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   const [showColumnPanel, setShowColumnPanel] = useState<boolean>(false);
 
   const [showSortPanel, setShowSortPanel] = useState<boolean>(false);
+  const [showFilterPanel, setShowFilterPanel] = useState<boolean>(false);
 
   // Updated to support multiple sort configurations
   const [sortConfigs, setSortConfigs] = useState<SortConfig[]>([]);
+  const [filterConfigs, setFilterConfigs] = useState<FilterConfig[]>([]);
 
   const utils = api.useUtils();
 
@@ -96,6 +100,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   useEffect(() => {
     setHiddenColumns(new Set());
     setSortConfigs([]);
+    setFilterConfigs([]);
   }, [activeTab]);
 
   const handleCreateTable = () => {
@@ -251,7 +256,32 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
           )}
         </div>
         
-        <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer">Filter</button>
+        <div className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer relative"
+          onClick={() => setShowFilterPanel(prev => !prev)}>
+          Filter
+
+          {filterConfigs.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              {filterConfigs.length}
+            </span>
+          )}
+
+          {showFilterPanel && columnsData && (
+            <FilterPanel
+              columns={columnsData.map(col => ({
+                id: col.id,
+                name: col.name,
+                type: col.type === "TEXT" ? "text" : "number",
+              }))}
+              onDone={(filterConfigs) => {
+                setFilterConfigs(filterConfigs);
+                setShowFilterPanel(false);
+              }}
+              onClose={() => setShowFilterPanel(false)}
+              initialFilterConfigs={filterConfigs}
+              />
+          )}
+        </div>
         <div className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer relative text-center"
           onClick={() => setShowSortPanel(prev => !prev)}
         >
@@ -318,6 +348,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
               hiddenColumns={hiddenColumns}
               onToggleColumn={handleToggleColumn}
               sortConfigs={sortConfigs}
+              filterConfigs={filterConfigs}
             />
           )}
         </div>
@@ -335,6 +366,13 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
         <div 
           className="fixed inset-0 z-40"
           onClick={() => setShowSortPanel(false)}
+        />
+      )}
+
+      {showFilterPanel && (
+        <div 
+          className="fixed inset-0 z-40"
+          onClick={() => setShowFilterPanel(false)}
         />
       )}
     </main>

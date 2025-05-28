@@ -282,10 +282,15 @@ export const tableRouter = createTRPCRouter({
         direction: z.enum(['asc', 'desc']),
         priority: z.number(),
       })).optional(),
+      filters: z.array(z.object({
+        columnId: z.number(),
+        operator: z.enum(['gt', 'lt', 'not_empty', 'empty', 'contains', 'not_contains', 'eq']),
+        value: z.string(),
+      })).optional(),
     })
   )
   .query(async ({ ctx, input }) => {
-    const { tableId, limit, cursor, sorts } = input;
+    const { tableId, limit, cursor, sorts, filters } = input;
     const userId = ctx.session.user.id;
 
     // Verify table access
@@ -308,94 +313,133 @@ export const tableRouter = createTRPCRouter({
 
     // Define proper types for sort columns using the actual column type from database
     type ColumnWithSort = {
-      column: typeof columns[0]; // Use the actual type from the query
+      column: typeof columns[0];
       direction: string;
+    };
+
+    type ColumnWithFilter = {
+      column: typeof columns[0];
+      operator: string;
+      value: string;
     };
 
     // Process multiple sorts
     let sortColumns: ColumnWithSort[] = [];
     if (sorts && sorts.length > 0) {
-      // Sort by priority and validate columns exist
       const validSorts = sorts
-        .sort((a, b) => a.priority - b.priority) // Sort by priority
+        .sort((a, b) => a.priority - b.priority)
         .map(sort => {
           const column = columns.find(col => col.id === sort.columnId);
           return column ? { column, direction: sort.direction.toUpperCase() } : null;
         })
-        .filter((item): item is NonNullable<typeof item> => item !== null); // Better type guard
+        .filter((item): item is NonNullable<typeof item> => item !== null);
       
       sortColumns = validSorts;
     }
 
-    // Build the query with multiple sorts
-    let rawQuery: string;
+    // Process filters
+    let filterColumns: ColumnWithFilter[] = [];
+    if (filters && filters.length > 0) {
+      const validFilters = filters
+        .map(filter => {
+          const column = columns.find(col => col.id === filter.columnId);
+          return column ? { column, operator: filter.operator, value: filter.value } : null;
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
+      
+      filterColumns = validFilters;
+    }
+
+    // Build the query with multiple sorts and filters
     const queryParams: (number | string | null)[] = [tableId];
 
+    // Build JOIN clauses for sorting
+    const sortJoinParts = sortColumns.map((sortCol, index) => {
+      queryParams.push(sortCol.column.id);
+      const joinAlias = `sort_cell_${index}`;
+      const paramIndex = queryParams.length;
+      return `LEFT JOIN "Cell" ${joinAlias} ON ${joinAlias}."rowId" = r."id" AND ${joinAlias}."columnId" = $${paramIndex}`;
+    });
+
+    // Build JOIN clauses for filtering
+    const filterJoinParts = filterColumns.map((filterCol, index) => {
+      queryParams.push(filterCol.column.id);
+      const joinAlias = `filter_cell_${index}`;
+      const paramIndex = queryParams.length;
+      return `LEFT JOIN "Cell" ${joinAlias} ON ${joinAlias}."rowId" = r."id" AND ${joinAlias}."columnId" = $${paramIndex}`;
+    });
+
+    // Build WHERE clauses for filtering
+    const filterWhereParts = filterColumns.map((filterCol, index) => {
+      const joinAlias = `filter_cell_${index}`;
+      const field = filterCol.column.type === 'NUMBER' ? 'numericValue' : 'value';
+      
+      switch (filterCol.operator) {
+        case 'gt':
+          queryParams.push(parseFloat(filterCol.value));
+          return `${joinAlias}."${field}" > $${queryParams.length}`;
+        case 'lt':
+          queryParams.push(parseFloat(filterCol.value));
+          return `${joinAlias}."${field}" < $${queryParams.length}`;
+        case 'not_empty':
+          return `(${joinAlias}."${field}" IS NOT NULL AND ${joinAlias}."${field}" != '')`;
+        case 'empty':
+          return `(${joinAlias}."${field}" IS NULL OR ${joinAlias}."${field}" = '')`;
+        case 'contains':
+          queryParams.push(`%${filterCol.value}%`);
+          return `${joinAlias}."${field}" ILIKE $${queryParams.length}`;
+        case 'not_contains':
+          queryParams.push(`%${filterCol.value}%`);
+          return `(${joinAlias}."${field}" IS NULL OR ${joinAlias}."${field}" NOT ILIKE $${queryParams.length})`;
+        case 'eq':
+          if (filterCol.column.type === 'NUMBER') {
+            queryParams.push(parseFloat(filterCol.value));
+          } else {
+            queryParams.push(filterCol.value);
+          }
+          return `${joinAlias}."${field}" = $${queryParams.length}`;
+        default:
+          return '1=1'; // Always true fallback
+      }
+    });
+
+    // Build ORDER BY clause
+    let orderByClause = 'r."order" ASC';
     if (sortColumns.length > 0) {
-      // Build ORDER BY clause with multiple columns
       const orderByParts = sortColumns.map((sortCol, index) => {
         const sortField = sortCol.column.type === 'NUMBER' ? 'numericValue' : 'value';
         const joinAlias = `sort_cell_${index}`;
         return `${joinAlias}."${sortField}" ${sortCol.direction} NULLS LAST`;
       });
-      
-      // Build JOIN clauses
-      const joinParts = sortColumns.map((sortCol, index) => {
-        queryParams.push(sortCol.column.id);
-        const joinAlias = `sort_cell_${index}`;
-        const paramIndex = queryParams.length;
-        return `LEFT JOIN "Cell" ${joinAlias} ON ${joinAlias}."rowId" = r."id" AND ${joinAlias}."columnId" = $${paramIndex}`;
-      });
-
-      const orderByClause = orderByParts.join(', ') + ', r."order" ASC';
-      const joinClause = joinParts.join(' ');
-
-      if (cursor) {
-        const cursorParamIndex = queryParams.length + 1;
-        const limitParamIndex = queryParams.length + 2;
-        rawQuery = `
-          SELECT r."id", r."order"
-          FROM "Row" r
-          ${joinClause}
-          WHERE r."tableId" = $1 AND r."id" > $${cursorParamIndex}
-          ORDER BY ${orderByClause}
-          LIMIT $${limitParamIndex}
-        `;
-        queryParams.push(cursor, limit + 1);
-      } else {
-        const limitParamIndex = queryParams.length + 1;
-        rawQuery = `
-          SELECT r."id", r."order"
-          FROM "Row" r
-          ${joinClause}
-          WHERE r."tableId" = $1
-          ORDER BY ${orderByClause}
-          LIMIT $${limitParamIndex}
-        `;
-        queryParams.push(limit + 1);
-      }
-    } else {
-      // Default ordering by row order
-      if (cursor) {
-        rawQuery = `
-          SELECT r."id", r."order"
-          FROM "Row" r
-          WHERE r."tableId" = $1 AND r."id" > $2
-          ORDER BY r."order" ASC
-          LIMIT $3
-        `;
-        queryParams.push(cursor, limit + 1);
-      } else {
-        rawQuery = `
-          SELECT r."id", r."order"
-          FROM "Row" r
-          WHERE r."tableId" = $1
-          ORDER BY r."order" ASC
-          LIMIT $2
-        `;
-        queryParams.push(limit + 1);
-      }
+      orderByClause = orderByParts.join(', ') + ', r."order" ASC';
     }
+
+    // Combine all JOIN clauses
+    const allJoinClauses = [...sortJoinParts, ...filterJoinParts].join(' ');
+
+    // Build WHERE clause
+    let whereClause = 'r."tableId" = $1';
+    if (cursor) {
+      queryParams.push(cursor);
+      whereClause += ` AND r."id" > $${queryParams.length}`;
+    }
+    if (filterWhereParts.length > 0) {
+      whereClause += ' AND ' + filterWhereParts.join(' AND ');
+    }
+
+    // Add limit
+    queryParams.push(limit + 1);
+    const limitClause = `LIMIT $${queryParams.length}`;
+
+    // Construct final query
+    const rawQuery = `
+      SELECT r."id", r."order"
+      FROM "Row" r
+      ${allJoinClauses}
+      WHERE ${whereClause}
+      ORDER BY ${orderByClause}
+      ${limitClause}
+    `;
 
     // Execute the query
     const rows = await ctx.db.$queryRawUnsafe<Array<{ id: number; order: number }>>(
