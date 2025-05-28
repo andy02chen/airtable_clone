@@ -4,7 +4,8 @@ TODO
 
 DO NEXT
 [ ] I want to be able to create a 'view' of a table and save the following configurations
-  [ ] Filters on columns: for both numbers (greater than, smaller than) and text (is not empty, is empty, contains, not contains, equal to)
+  [X] Filters on columns
+  [X] Sort
   [ ] Can search through 
 
 [ ] I want to be able to search across all the cells

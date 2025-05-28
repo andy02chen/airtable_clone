@@ -24,6 +24,7 @@ type TableCellsProps = {
   onToggleColumn: (columnId: string) => void;
   sortConfigs?: SortConfig[];
   filterConfigs?: FilterConfig[];
+  searchQuery?: string;
 };
 
 type TableData = Record<string, string | number | null>;
@@ -123,7 +124,7 @@ function CellInput({
   );
 }
 
-export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sortConfigs, filterConfigs }: TableCellsProps) {
+export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sortConfigs, filterConfigs, searchQuery }: TableCellsProps) {
   const utils = api.useUtils();
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
@@ -140,12 +141,12 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
       tableId,
       limit: 50,
       sorts: sortConfigs,
-      filters: filterConfigs
+      filters: filterConfigs,
+      search: searchQuery?.trim()
     },
     {
       enabled: !!tableId,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
-      // Add staleTime to prevent unnecessary refetches
       staleTime: 1000 * 60 * 5, // 5 minutes
     }
   );

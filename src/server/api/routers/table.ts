@@ -287,10 +287,11 @@ export const tableRouter = createTRPCRouter({
         operator: z.enum(['gt', 'lt', 'not_empty', 'empty', 'contains', 'not_contains', 'eq']),
         value: z.string(),
       })).optional(),
+      search: z.string().optional(), // Add search parameter
     })
   )
   .query(async ({ ctx, input }) => {
-    const { tableId, limit, cursor, sorts, filters } = input;
+    const { tableId, limit, cursor, sorts, filters, search } = input;
     const userId = ctx.session.user.id;
 
     // Verify table access
@@ -350,7 +351,7 @@ export const tableRouter = createTRPCRouter({
       filterColumns = validFilters;
     }
 
-    // Build the query with multiple sorts and filters
+    // Build the query with multiple sorts, filters, and search
     const queryParams: (number | string | null)[] = [tableId];
 
     // Build JOIN clauses for sorting
@@ -368,6 +369,17 @@ export const tableRouter = createTRPCRouter({
       const paramIndex = queryParams.length;
       return `LEFT JOIN "Cell" ${joinAlias} ON ${joinAlias}."rowId" = r."id" AND ${joinAlias}."columnId" = $${paramIndex}`;
     });
+
+    // Build JOIN clauses for search (if search term provided)
+    let searchJoinParts: string[] = [];
+    if (search?.trim()) {
+      searchJoinParts = columns.map((col, index) => {
+        queryParams.push(col.id);
+        const joinAlias = `search_cell_${index}`;
+        const paramIndex = queryParams.length;
+        return `LEFT JOIN "Cell" ${joinAlias} ON ${joinAlias}."rowId" = r."id" AND ${joinAlias}."columnId" = $${paramIndex}`;
+      });
+    }
 
     // Build WHERE clauses for filtering
     const filterWhereParts = filterColumns.map((filterCol, index) => {
@@ -403,6 +415,21 @@ export const tableRouter = createTRPCRouter({
       }
     });
 
+    // Build WHERE clause for search
+    let searchWhereParts: string[] = [];
+    if (search?.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      
+      searchWhereParts = columns.map((col, index) => {
+        const joinAlias = `search_cell_${index}`;
+        const field = col.type === 'NUMBER' ? 'numericValue' : 'value';
+        
+        // For both NUMBER and TEXT columns, convert to text and use ILIKE for partial matching
+        queryParams.push(searchTerm);
+        return `${joinAlias}."${field}"::text ILIKE $${queryParams.length}`;
+      });
+    }
+
     // Build ORDER BY clause
     let orderByClause = 'r."order" ASC';
     if (sortColumns.length > 0) {
@@ -415,7 +442,7 @@ export const tableRouter = createTRPCRouter({
     }
 
     // Combine all JOIN clauses
-    const allJoinClauses = [...sortJoinParts, ...filterJoinParts].join(' ');
+    const allJoinClauses = [...sortJoinParts, ...filterJoinParts, ...searchJoinParts].join(' ');
 
     // Build WHERE clause
     let whereClause = 'r."tableId" = $1';
@@ -426,6 +453,10 @@ export const tableRouter = createTRPCRouter({
     if (filterWhereParts.length > 0) {
       whereClause += ' AND ' + filterWhereParts.join(' AND ');
     }
+    if (searchWhereParts.length > 0) {
+      // Use OR to search across all columns
+      whereClause += ' AND (' + searchWhereParts.join(' OR ') + ')';
+    }
 
     // Add limit
     queryParams.push(limit + 1);
@@ -433,7 +464,7 @@ export const tableRouter = createTRPCRouter({
 
     // Construct final query
     const rawQuery = `
-      SELECT r."id", r."order"
+      SELECT DISTINCT r."id", r."order"
       FROM "Row" r
       ${allJoinClauses}
       WHERE ${whereClause}

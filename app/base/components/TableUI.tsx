@@ -36,9 +36,10 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   const [showSortPanel, setShowSortPanel] = useState<boolean>(false);
   const [showFilterPanel, setShowFilterPanel] = useState<boolean>(false);
 
-  // Updated to support multiple sort configurations
   const [sortConfigs, setSortConfigs] = useState<SortConfig[]>([]);
   const [filterConfigs, setFilterConfigs] = useState<FilterConfig[]>([]);
+
+  const [searchQuery, setSearchQuery] = useState('');
 
   const utils = api.useUtils();
 
@@ -131,6 +132,10 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
       }
       return newSet;
     });
+  };
+
+  const handleSearch = (query: string) => {
+    console.log("Searching for:", query);
   };
 
   if (tablesLoading || !tableData || tableData.length === 0) {
@@ -227,7 +232,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
       </div>
 
       {/* Buttons */}
-      <div className={`flex px-4 py-2 border-b bg-white text-gray-700`}>
+      <div className={`relative flex items-center px-4 py-2 border-b bg-white text-gray-700 justify-between`}>
         <button className={`px-4 py-1 rounded border-2 transition cursor-pointer ${
           showViews
             ? 'bg-gray-200 text-black hover:border-gray-300'
@@ -309,6 +314,18 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
           )}
         </div>
 
+        <div className="absolute left-1/2 transform -translate-x-1/2">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search..."
+              className="px-3 py-1 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
         <div className="ml-auto">
           <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer disabled:cursor-not-allowed"
           onClick={() => {
@@ -349,6 +366,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
               onToggleColumn={handleToggleColumn}
               sortConfigs={sortConfigs}
               filterConfigs={filterConfigs}
+              searchQuery={searchQuery}
             />
           )}
         </div>
