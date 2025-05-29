@@ -119,7 +119,7 @@ export default function FilterPanel({ columns, onDone, onClose, initialFilterCon
         <h3 className="text-lg font-medium">Filter Columns</h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+          className="text-gray-400 hover:text-gray-600 text-xl leading-none cursor-pointer"
         >
           ×
         </button>
@@ -173,7 +173,7 @@ export default function FilterPanel({ columns, onDone, onClose, initialFilterCon
                   setSelectedOperator('');
                   setFilterValue('');
                 }}
-                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               >
                 <option value="" disabled>Select column...</option>
                 {availableColumns.map(col => (
@@ -190,7 +190,7 @@ export default function FilterPanel({ columns, onDone, onClose, initialFilterCon
                     setSelectedOperator(e.target.value as FilterConfig['operator']);
                     setFilterValue('');
                   }}
-                  className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500  cursor-pointer"
                 >
                   <option value="" disabled>Select condition...</option>
                   {getOperatorsForColumn(selectedColumnId).map(op => (
@@ -215,7 +215,7 @@ export default function FilterPanel({ columns, onDone, onClose, initialFilterCon
                 <button
                   onClick={addFilterConfig}
                   disabled={needsValue(selectedOperator) && !filterValue.trim()}
-                  className="w-full px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer"
                 >
                   Add Filter
                 </button>
@@ -233,14 +233,14 @@ export default function FilterPanel({ columns, onDone, onClose, initialFilterCon
                 onDone([]);
                 onClose();
               }}
-              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
             >
               Clear All
             </button>
             <div className="flex gap-2">
               <button
                 onClick={onClose}
-                className="px-4 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100"
+                className="px-4 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100  cursor-pointer"
               >
                 Cancel
               </button>
@@ -249,7 +249,7 @@ export default function FilterPanel({ columns, onDone, onClose, initialFilterCon
                   onDone(filterConfigs);
                   onClose();
                 }}
-                className="px-4 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-4 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700  cursor-pointer"
               >
                 Apply Filters
               </button>

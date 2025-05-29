@@ -3,14 +3,15 @@ TODO
 [ ] Just focus on the main page with table, columns, and cells.
 
 DO NEXT
+
+when i edit a cell and click out/click enter, it doesnt save unless i refresh
+clicking tab to go to the next cell isn’t supported yet - IDK
+hovering this filter has a cursor pointer but doesn’t have an action so it’s a bit misleading so i think it only needs a cursor pointer on the X part
+
 [ ] I want to be able to create a 'view' of a table and save the following configurations
   [X] Filters on columns
   [X] Sort
-  [ ] Can search through 
-
-[ ] I want to be able to search across all the cells
-
-[ ] Search, filter, and sort have to be done at the database level
+  [X] Can search through 
 
 [X] Make sure there's a loading state
 

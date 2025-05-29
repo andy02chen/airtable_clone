@@ -247,31 +247,34 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
         >
           Hide Columns
           {hiddenColumns.size > 0 && (
-            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center cursor-auto">
               {hiddenColumns.size}
             </span>
           )}
           {showColumnPanel && columnsData && (
+            <div className="cursor-auto">
             <ColumnVisibilityPanel
               columns={columnsData}
               hiddenColumns={hiddenColumns}
               onToggleColumn={handleToggleColumn}
               onClose={() => setShowColumnPanel(false)}
             />
+            </div>
           )}
         </div>
         
-        <div className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer relative"
+        <div className="px-4 py-1 rounded hover:bg-gray-100 transition relative cursor-pointer"
           onClick={() => setShowFilterPanel(prev => !prev)}>
           Filter
 
           {filterConfigs.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center cursor-auto">
               {filterConfigs.length}
             </span>
           )}
 
           {showFilterPanel && columnsData && (
+            <div className="cursor-auto">
             <FilterPanel
               columns={columnsData.map(col => ({
                 id: col.id,
@@ -285,19 +288,21 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
               onClose={() => setShowFilterPanel(false)}
               initialFilterConfigs={filterConfigs}
               />
+            </div>
           )}
         </div>
-        <div className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer relative text-center"
+        <div className="px-4 py-1 rounded hover:bg-gray-100 transition relative text-center cursor-pointer"
           onClick={() => setShowSortPanel(prev => !prev)}
         >
           Sort
           {sortConfigs.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center cursor-auto">
               {sortConfigs.length}
             </span>
           )}
 
           {showSortPanel && columnsData && (
+            <div className="cursor-auto">
             <SortPanel
               columns={columnsData.map(col => ({
                 id: col.id,
@@ -311,6 +316,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
               onClose={() => setShowSortPanel(false)}
               initialSortConfigs={sortConfigs}
             />
+            </div>
           )}
         </div>
 

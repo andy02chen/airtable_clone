@@ -49,7 +49,7 @@ export default function ColumnVisibilityPanel({
         <h3 className="text-lg font-medium">Hide Columns</h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-xl"
+          className="text-gray-400 hover:text-gray-600 text-xl cursor-pointer"
         >
           ×
         </button>
@@ -61,7 +61,7 @@ export default function ColumnVisibilityPanel({
           </span>
           <button
             onClick={handleToggleAll}
-            className="text-sm text-blue-600 hover:text-blue-800"
+            className="text-sm text-blue-600 hover:text-blue-800  cursor-pointer"
           >
             {hiddenColumns.size === 0 ? 'Hide all' : 'Show all'}
           </button>
@@ -83,7 +83,7 @@ export default function ColumnVisibilityPanel({
                     id={columnId}
                     checked={isVisible}
                     onChange={() => onToggleColumn(columnId)}
-                    className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
                   />
                   <label
                     htmlFor={columnId}

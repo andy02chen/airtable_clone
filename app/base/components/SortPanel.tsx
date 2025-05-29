@@ -80,7 +80,7 @@ export default function SortPanel({ columns, onDone, onClose, initialSortConfigs
         <h3 className="text-lg font-medium">Sort Columns</h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+          className="text-gray-400 hover:text-gray-600 text-xl leading-none cursor-pointer"
         >
           ×
         </button>
@@ -113,7 +113,7 @@ export default function SortPanel({ columns, onDone, onClose, initialSortConfigs
                       </button>
                       <button
                         onClick={() => removeSortConfig(config.columnId)}
-                        className="px-1 py-1 text-xs text-red-600 hover:text-red-800"
+                        className="px-1 py-1 text-xs text-red-600 hover:text-red-800 cursor-pointer"
                         title="Remove"
                       >
                         ×
@@ -134,7 +134,7 @@ export default function SortPanel({ columns, onDone, onClose, initialSortConfigs
               <select
                 value={selectedColumnId ?? ''}
                 onChange={e => setSelectedColumnId(Number(e.target.value))}
-                className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               >
                 <option value="" disabled>Select column...</option>
                 {availableColumns.map(col => (
@@ -149,7 +149,7 @@ export default function SortPanel({ columns, onDone, onClose, initialSortConfigs
                   <select
                     value={sortDirection}
                     onChange={e => setSortDirection(e.target.value as 'asc' | 'desc')}
-                    className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   >
                     <option value="asc">
                       {getColumnType(selectedColumnId) === 'text' ? 'A → Z' : 'Ascending'}
@@ -160,7 +160,7 @@ export default function SortPanel({ columns, onDone, onClose, initialSortConfigs
                   </select>
                   <button
                     onClick={addSortConfig}
-                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
                   >
                     Add
                   </button>
@@ -179,14 +179,14 @@ export default function SortPanel({ columns, onDone, onClose, initialSortConfigs
                 onDone([]);
                 onClose();
               }}
-              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
             >
               Clear All
             </button>
             <div className="flex gap-2">
               <button
                 onClick={onClose}
-                className="px-4 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100"
+                className="px-4 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 cursor-pointer"
               >
                 Cancel
               </button>
@@ -195,7 +195,7 @@ export default function SortPanel({ columns, onDone, onClose, initialSortConfigs
                   onDone(sortConfigs);
                   onClose();
                 }}
-                className="px-4 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-4 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
               >
                 Apply Sort
               </button>

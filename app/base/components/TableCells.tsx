@@ -44,7 +44,7 @@ function CellInput({
   onUpdate: (rowId: number, columnId: number, value: string) => void;
 }) {
   const [localValue, setLocalValue] = React.useState(initialValue);
-  const [lastSavedValue, setLastSavedValue] = React.useState(initialValue);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
   const isNumberColumn = columnType && (columnType === 'NUMBER' || columnType === 'number' || String(columnType).toLowerCase() === 'number');
 
   // Helper function to validate and clean number input
@@ -56,17 +56,13 @@ function CellInput({
     return match ? match[0] : '';
   };
 
-  // Update local state when server value changes, with validation
+  // Update local state when server value changes, but preserve local changes
   React.useEffect(() => {
-    const validatedValue = validateNumberValue(initialValue);
-    setLocalValue(validatedValue);
-    setLastSavedValue(validatedValue);
-    
-    // If the server value was invalid and we cleaned it, update the server
-    if (isNumberColumn && validatedValue !== initialValue && initialValue !== '') {
-      onUpdate(rowId, columnId, validatedValue);
+    if (!hasUnsavedChanges) {
+      const validatedValue = validateNumberValue(initialValue);
+      setLocalValue(validatedValue);
     }
-  }, [initialValue, isNumberColumn, rowId, columnId, onUpdate]);
+  }, [initialValue, hasUnsavedChanges, isNumberColumn]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -75,42 +71,30 @@ function CellInput({
       // For number columns, validate in real-time
       const validatedValue = validateNumberValue(newValue);
       setLocalValue(validatedValue);
-      
-      // Only trigger update if value actually changed
-      if (validatedValue !== lastSavedValue) {
-        onUpdate(rowId, columnId, validatedValue);
-        setLastSavedValue(validatedValue);
-      }
+      setHasUnsavedChanges(true);
+      onUpdate(rowId, columnId, validatedValue);
     } else {
       // For non-number columns, accept any input
       setLocalValue(newValue);
-      
-      // Only trigger update if value actually changed
-      if (newValue !== lastSavedValue) {
-        onUpdate(rowId, columnId, newValue);
-        setLastSavedValue(newValue);
-      }
+      setHasUnsavedChanges(true);
+      onUpdate(rowId, columnId, newValue);
     }
   };
 
   const handleBlur = () => {
-    // On blur, ensure the value is still valid and saved
+    // On blur, ensure the value is still valid
     if (isNumberColumn) {
       const validatedValue = validateNumberValue(localValue);
       if (validatedValue !== localValue) {
         setLocalValue(validatedValue);
-        if (validatedValue !== lastSavedValue) {
-          onUpdate(rowId, columnId, validatedValue);
-          setLastSavedValue(validatedValue);
-        }
+        onUpdate(rowId, columnId, validatedValue);
       }
     }
     
-    // Final save on blur if there are unsaved changes
-    if (localValue !== lastSavedValue) {
-      onUpdate(rowId, columnId, localValue);
-      setLastSavedValue(localValue);
-    }
+    // Mark as saved after blur
+    setTimeout(() => {
+      setHasUnsavedChanges(false);
+    }, 500); // Small delay to allow mutation to complete
   };
 
   return (
@@ -129,6 +113,15 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
+  // Create the query key for consistent cache access
+  const queryKey = React.useMemo(() => ({
+    tableId,
+    limit: 50,
+    sorts: sortConfigs,
+    filters: filterConfigs,
+    search: searchQuery?.trim()
+  }), [tableId, sortConfigs, filterConfigs, searchQuery]);
+
   // Fetch the specific table data
   const {
     data: infiniteData,
@@ -137,13 +130,7 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
     hasNextPage,
     isFetchingNextPage,
   } = api.table.infiniteScroll.useInfiniteQuery(
-    {
-      tableId,
-      limit: 50,
-      sorts: sortConfigs,
-      filters: filterConfigs,
-      search: searchQuery?.trim()
-    },
+    queryKey,
     {
       enabled: !!tableId,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -219,26 +206,14 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
 
   const updateCellMutation = api.base.updateCell.useMutation({
     onMutate: async ({ rowId, column: columnId, value }) => {
-      console.log('Updating cell:', { rowId, columnId, value }); // Debug log
-      
       // Cancel any outgoing refetches for the infinite query
-      await utils.table.infiniteScroll.cancel({ tableId });
+      await utils.table.infiniteScroll.cancel(queryKey);
 
       // Snapshot the previous value
-      const previousData = utils.table.infiniteScroll.getInfiniteData({ 
-        tableId, 
-        limit: 50,
-        sorts: sortConfigs,
-        filters: filterConfigs
-      });
+      const previousData = utils.table.infiniteScroll.getInfiniteData(queryKey);
 
       // Optimistically update the infinite query cache
-      utils.table.infiniteScroll.setInfiniteData({ 
-        tableId, 
-        limit: 50,
-        sorts: sortConfigs,
-        filters: filterConfigs
-      }, (old) => {
+      utils.table.infiniteScroll.setInfiniteData(queryKey, (old) => {
         if (!old) return old;
         
         return {
@@ -261,34 +236,25 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
       return { previousData };
     },
     onSuccess: (data, variables) => {
-      console.log('Cell update successful:', { data, variables }); // Debug log
-      // Don't invalidate on success - trust the optimistic update
-      // Only invalidate if there's a discrepancy
+      console.log('Cell update successful:', { data, variables });
+      // Optionally refresh data after successful update to ensure consistency
+      // But don't invalidate immediately to preserve the optimistic update
     },
     onError: async (err, variables, context) => {
-      console.error("Failed to update cell:", err, variables); // Enhanced error log
+      console.error("Failed to update cell:", err, variables);
       
       // Revert optimistic update on error
       if (context?.previousData) {
-        utils.table.infiniteScroll.setInfiniteData({ 
-          tableId, 
-          limit: 50,
-          sorts: sortConfigs,
-          filters: filterConfigs
-        }, context.previousData);
+        utils.table.infiniteScroll.setInfiniteData(queryKey, context.previousData);
       }
       
       // Always invalidate on error to get fresh data
       await utils.table.infiniteScroll.invalidate({ tableId });
-    },
-    onSettled: () => {
-      // Optional: You could add a subtle invalidation here after a delay
-      // to ensure data consistency without being too aggressive
     }
   });
 
   const handleCellUpdate = React.useCallback((rowId: number, columnKey: number, value: string) => {
-    console.log('Handling cell update:', { rowId, columnKey, value }); // Debug log
+    console.log('Handling cell update:', { rowId, columnKey, value });
     
     if (debounceTimeout.current) {
       clearTimeout(debounceTimeout.current);
@@ -300,7 +266,7 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
         column: columnKey,
         value,
       });
-    }, 300); // Reduced debounce time for better responsiveness
+    }, 300);
   }, [updateCellMutation]);
 
   const columns = React.useMemo(() => {
@@ -333,7 +299,8 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
             }
             
             // Create a unique key for this cell to maintain local state
-            const cellKey = `${rowId}_${columnId}`;
+            // Include table ID to ensure uniqueness across different tables
+            const cellKey = `${tableId}_${rowId}_${columnId}`;
             
             // Ensure we have a valid string or number for the input value
             const serverValue = typeof cellData === 'string' || typeof cellData === 'number' 
@@ -358,7 +325,7 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
     }
 
     return baseColumns;
-  }, [tableData, hiddenColumns, handleCellUpdate]);
+  }, [tableData, hiddenColumns, handleCellUpdate, tableId]);
 
   const table = useReactTable({
     data: allRows,
