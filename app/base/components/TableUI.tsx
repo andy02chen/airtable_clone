@@ -28,6 +28,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   const [showViews, setShowViews] = useState<boolean>(true);
   const [newTableName, setNewTableName] = useState<string>("");
   const [showCreateForm, setShowCreateForm] = useState<boolean>(false);
+  const [newViewName, setNewViewName] = useState<string>("");
   
   // Column visibility state
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
@@ -39,7 +40,10 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   const [sortConfigs, setSortConfigs] = useState<SortConfig[]>([]);
   const [filterConfigs, setFilterConfigs] = useState<FilterConfig[]>([]);
 
+  const [showCreateViewForm, setShowCreateViewForm] = useState<boolean>(false);
+
   const [searchQuery, setSearchQuery] = useState('');
+  
 
   const utils = api.useUtils();
 
@@ -57,6 +61,11 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     { enabled: !!currentTableId }
   );
 
+  const { data: viewsData, isLoading: viewsLoading } = api.table.getViews.useQuery(
+  { tableId: currentTableId ?? 0 },
+  { enabled: !!currentTableId }
+);
+
   const spamRows = api.table.add100krows.useMutation({
     onSuccess: async (data) => {
     console.log(`Successfully added ${data.count} rows`);
@@ -69,6 +78,20 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     console.error("Failed to add rows:", error);
   }
   })
+
+  // Create View Mutation
+  const createViewMutation = api.table.createView.useMutation({
+    onSuccess: async () => {
+      if (currentTableId) {
+        await utils.table.getViews.invalidate({ tableId: currentTableId });
+      }
+      setShowCreateViewForm(false);
+      setNewViewName("");
+    },
+    onError: (error) => {
+      console.error("Failed to create view:", error);
+    }
+  });
 
   // Create table mutation
   const createTableMutation = api.table.create.useMutation({
@@ -103,6 +126,15 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     setSortConfigs([]);
     setFilterConfigs([]);
   }, [activeTab]);
+
+  const handleCreateView = () => {
+    if (newViewName.trim() && currentTableId) {
+      createViewMutation.mutate({
+        tableId: currentTableId,
+        name: newViewName.trim()
+      });
+    }
+  };
 
   const handleCreateTable = () => {
     if (newTableName.trim()) {
@@ -359,9 +391,57 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
           <div className="p-2 border-t border-gray-300">
             <button
               className="w-full py-2 px-4 hover:bg-gray-200 text-black cursor-pointer rounded-md transition-colors duration-200 flex items-center justify-center"
+              onClick={() => setShowCreateViewForm(true)}
             >
               Create View +
             </button>
+            { showCreateViewForm && (
+              <div className="flex items-center bg-white rounded-t-lg">
+                <input
+                  type="text"
+                  value={newViewName}
+                  onChange={(e) => setNewViewName(e.target.value)}
+                  placeholder="View name"
+                  className="px-2 py-1 text-sm border border-gray-300 rounded text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                />
+
+                <button
+                  onClick={handleCreateView}
+                  disabled={!newViewName.trim() || ( 
+                    !searchQuery && 
+                    filterConfigs.length === 0 && 
+                    sortConfigs.length === 0) || createViewMutation.isPending
+                  }
+                  className="ml-2 px-2 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {createViewMutation.isPending ? '...' : '✓'}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowCreateViewForm(false);
+                    setNewViewName("");
+                  }}
+                  className="ml-1 px-2 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            <div className="w-full h-px bg-gray-200 my-2"></div>
+            <div>
+              {/* TODO display views/select */}
+              {viewsData?.map((view) => (
+                <div
+                  key={view.id}
+                  className="p-2 hover:bg-gray-100 cursor-pointer rounded transition-colors"
+                >
+                  {view.name}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
         <div className="flex-1 bg-gray-200 overflow-y-auto">

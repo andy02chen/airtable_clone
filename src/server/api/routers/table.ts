@@ -4,6 +4,121 @@ import { faker } from '@faker-js/faker';
 import { Prisma } from "@prisma/client";
 
 export const tableRouter = createTRPCRouter({
+  getViews: protectedProcedure
+  .input(z.object({
+    tableId: z.number()
+  }))
+  .query(async ({ input, ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const table = await ctx.db.table.findFirst({
+      where : {
+        id: input.tableId,
+        base: {
+          userId: userId
+        }
+      }
+    });
+
+    if (!table) {
+      throw new Error("Table not found or access denied");
+    }
+
+    const views = await ctx.db.view.findMany({
+      where: { tableId: input.tableId },
+      include: {
+        sortConfig: {
+          orderBy: { priority: 'asc' }
+        },
+        filterConfig: true
+      },
+      orderBy: { id: 'asc' }
+    });
+
+    return views;
+  }),
+
+  createView: protectedProcedure
+  .input(z.object({ 
+      tableId: z.number(),
+      name: z.string().min(1),
+      searchQuery: z.string().optional(),
+      sortConfig: z.array(z.object({
+        columnId: z.number(),
+        direction: z.enum(['asc', 'desc']),
+        priority: z.number()
+      })).optional(),
+      filterConfig: z.array(z.object({
+        columnId: z.number(),
+        operator: z.enum(['gt', 'lt', 'not_empty', 'empty', 'contains', 'not_contains', 'eq']),
+        value: z.string()
+      })).optional()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const table = await ctx.db.table.findFirst({
+        where : {
+          id: input.tableId,
+          base: {
+            userId: userId
+          }
+        }
+      });
+
+      if (!table) {
+        throw new Error("Table not found or access denied");
+      }
+
+      const view = await ctx.db.$transaction(async (tx) => {
+        // Create the main view record
+        const newView = await tx.view.create({
+          data: {
+            tableId: input.tableId,
+            name: input.name,
+            searchQuery: input.searchQuery ?? null
+          }
+        });
+
+        // Create sort configurations if provided
+        if (input.sortConfig && input.sortConfig.length > 0) {
+          await tx.sortConfig.createMany({
+            data: input.sortConfig.map(sort => ({
+              viewId: newView.id,
+              columnId: sort.columnId,
+              direction: sort.direction,
+              priority: sort.priority
+            }))
+          });
+        }
+
+        // Create filter configurations if provided
+        if (input.filterConfig && input.filterConfig.length > 0) {
+          await tx.filterConfig.createMany({
+            data: input.filterConfig.map(filter => ({
+              viewId: newView.id,
+              columnId: filter.columnId,
+              operator: filter.operator,
+              value: filter.value
+            }))
+          });
+        }
+
+        // Return the complete view with its configurations
+        return await tx.view.findUnique({
+          where: { id: newView.id },
+          include: {
+            sortConfig: {
+              orderBy: { priority: 'asc' }
+            },
+            filterConfig: true
+          }
+        });
+      });
+
+      return view;
+    }),
+
   create: protectedProcedure
     .input(z.object({ 
       baseId: z.number(),
@@ -287,7 +402,7 @@ export const tableRouter = createTRPCRouter({
         operator: z.enum(['gt', 'lt', 'not_empty', 'empty', 'contains', 'not_contains', 'eq']),
         value: z.string(),
       })).optional(),
-      search: z.string().optional(), // Add search parameter
+      search: z.string().optional(),
     })
   )
   .query(async ({ ctx, input }) => {
@@ -430,13 +545,23 @@ export const tableRouter = createTRPCRouter({
       });
     }
 
+    // Build SELECT clause - include sorting columns to fix DISTINCT issue
+    let selectClause = 'r."id", r."order"';
+    const sortSelectParts = sortColumns.map((sortCol, index) => {
+      const sortField = sortCol.column.type === 'NUMBER' ? 'numericValue' : 'value';
+      const joinAlias = `sort_cell_${index}`;
+      return `${joinAlias}."${sortField}" as sort_${index}`;
+    });
+    
+    if (sortSelectParts.length > 0) {
+      selectClause += ', ' + sortSelectParts.join(', ');
+    }
+
     // Build ORDER BY clause
     let orderByClause = 'r."order" ASC';
     if (sortColumns.length > 0) {
       const orderByParts = sortColumns.map((sortCol, index) => {
-        const sortField = sortCol.column.type === 'NUMBER' ? 'numericValue' : 'value';
-        const joinAlias = `sort_cell_${index}`;
-        return `${joinAlias}."${sortField}" ${sortCol.direction} NULLS LAST`;
+        return `sort_${index} ${sortCol.direction} NULLS LAST`;
       });
       orderByClause = orderByParts.join(', ') + ', r."order" ASC';
     }
@@ -464,7 +589,7 @@ export const tableRouter = createTRPCRouter({
 
     // Construct final query
     const rawQuery = `
-      SELECT DISTINCT r."id", r."order"
+      SELECT DISTINCT ${selectClause}
       FROM "Row" r
       ${allJoinClauses}
       WHERE ${whereClause}
@@ -473,16 +598,19 @@ export const tableRouter = createTRPCRouter({
     `;
 
     // Execute the query
-    const rows = await ctx.db.$queryRawUnsafe<Array<{ id: number; order: number }>>(
+    const queryResult = await ctx.db.$queryRawUnsafe<Array<{ id: number; order: number; [key: string]: unknown }>>(
       rawQuery,
       ...queryParams
     );
 
-    const hasNextPage = rows.length > limit;
-    const items = hasNextPage ? rows.slice(0, -1) : rows;
+    const hasNextPage = queryResult.length > limit;
+    const items = hasNextPage ? queryResult.slice(0, -1) : queryResult;
+
+    // Extract just the row info we need
+    const rows = items.map(item => ({ id: item.id, order: item.order }));
 
     // Get all cells for these rows
-    const rowIds = items.map(row => row.id);
+    const rowIds = rows.map(row => row.id);
     
     if (rowIds.length === 0) {
       return {
@@ -503,7 +631,7 @@ export const tableRouter = createTRPCRouter({
     });
 
     // Transform data into the expected format
-    const transformedItems = items.map(row => {
+    const transformedItems = rows.map(row => {
       const rowData: Record<string, string | number | null> = {
         id: row.id,
         order: row.order,
@@ -527,7 +655,7 @@ export const tableRouter = createTRPCRouter({
 
     return {
       items: transformedItems,
-      nextCursor: hasNextPage ? items[items.length - 1]?.id : undefined,
+      nextCursor: hasNextPage ? rows[rows.length - 1]?.id : undefined,
       columns,
     };
   }),
