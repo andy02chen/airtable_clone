@@ -44,6 +44,9 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
 
   const [searchQuery, setSearchQuery] = useState('');
   
+  const [activeView, setActiveView] = useState<number | null>(null);
+
+  const [pendingViewSelection, setPendingViewSelection] = useState<string | null>(null);
 
   const utils = api.useUtils();
 
@@ -62,9 +65,9 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   );
 
   const { data: viewsData, isLoading: viewsLoading } = api.table.getViews.useQuery(
-  { tableId: currentTableId ?? 0 },
-  { enabled: !!currentTableId }
-);
+    { tableId: currentTableId ?? 0 },
+    { enabled: !!currentTableId }
+  );
 
   const spamRows = api.table.add100krows.useMutation({
     onSuccess: async (data) => {
@@ -83,6 +86,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   const createViewMutation = api.table.createView.useMutation({
     onSuccess: async () => {
       if (currentTableId) {
+        setPendingViewSelection(newViewName.trim()); // Store the name for selection
         await utils.table.getViews.invalidate({ tableId: currentTableId });
       }
       setShowCreateViewForm(false);
@@ -125,13 +129,66 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     setHiddenColumns(new Set());
     setSortConfigs([]);
     setFilterConfigs([]);
+    setActiveView(null);
   }, [activeTab]);
+
+  useEffect(() => {
+  if (pendingViewSelection && viewsData) {
+    const newView = viewsData.find(view => view.name === pendingViewSelection);
+    if (newView) {
+      handleViewClick(newView);
+      setPendingViewSelection(null); // Clear the pending selection
+    }
+  }
+}, [viewsData, pendingViewSelection]);
+
+  const handleViewClick = (view: NonNullable<typeof viewsData>[0]) => {
+  setActiveView(view.id);
+  
+  // Apply the view's search query
+  setSearchQuery(view.searchQuery ?? '');
+  
+  // Apply the view's sort configuration
+  if (view.sortConfig && view.sortConfig.length > 0) {
+    const sortConfigs = view.sortConfig.map((sort: {
+      columnId: number;
+      direction: string;
+      priority: number;
+    }) => ({
+      columnId: sort.columnId,
+      direction: sort.direction as 'asc' | 'desc',
+      priority: sort.priority
+    }));
+    setSortConfigs(sortConfigs);
+  } else {
+    setSortConfigs([]);
+  }
+  
+  // Apply the view's filter configuration
+  if (view.filterConfig && view.filterConfig.length > 0) {
+    const filterConfigs = view.filterConfig.map((filter: {
+      columnId: number;
+      operator: string;
+      value: string;
+    }) => ({
+      columnId: filter.columnId,
+      operator: filter.operator as FilterConfig['operator'],
+      value: filter.value
+    }));
+    setFilterConfigs(filterConfigs);
+  } else {
+    setFilterConfigs([]);
+  }
+};
 
   const handleCreateView = () => {
     if (newViewName.trim() && currentTableId) {
       createViewMutation.mutate({
         tableId: currentTableId,
-        name: newViewName.trim()
+        name: newViewName.trim(),
+        searchQuery: searchQuery.trim() || undefined,
+        sortConfig: sortConfigs.length > 0 ? sortConfigs : undefined,
+        filterConfig: filterConfigs.length > 0 ? filterConfigs : undefined
       });
     }
   };
@@ -432,11 +489,27 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
 
             <div className="w-full h-px bg-gray-200 my-2"></div>
             <div>
-              {/* TODO display views/select */}
+              <div
+                className={`p-2 hover:bg-gray-100 cursor-pointer rounded transition-colors ${
+                  activeView === null ? "border-l-4 border-blue-500 bg-gray-50" : ""
+                }`}
+                onClick={() => {
+                  setActiveView(null);
+                  setSearchQuery('');
+                  setFilterConfigs([]);
+                  setSortConfigs([]);
+                }}
+              >
+                Default View
+              </div>
+              
               {viewsData?.map((view) => (
                 <div
                   key={view.id}
-                  className="p-2 hover:bg-gray-100 cursor-pointer rounded transition-colors"
+                  className={`p-2 hover:bg-gray-100 cursor-pointer rounded transition-colors ${
+                    activeView === view.id ? "border-l-4 border-blue-500 bg-gray-50" : ""
+                  }`}
+                  onClick={() => handleViewClick(view)}
                 >
                   {view.name}
                 </div>

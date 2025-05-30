@@ -148,7 +148,7 @@ export default function FilterPanel({ columns, onDone, onClose, initialFilterCon
                     )}
                     <button
                       onClick={() => removeFilterConfig(config.columnId)}
-                      className="px-1 py-1 text-xs text-red-600 hover:text-red-800"
+                      className="px-1 py-1 text-xs text-red-600 hover:text-red-800 cursor-pointer"
                       title="Remove"
                     >
                       ×
