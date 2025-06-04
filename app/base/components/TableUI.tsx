@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import LogOut from "~/app/_components/Logout";
 import { getBaseColorClass } from "~/app/utils/colours";
 import { api } from "~/src/trpc/react";
@@ -11,6 +11,7 @@ import ColumnVisibilityPanel from "./ColumnVisibilityPanel";
 import SortPanel from "./SortPanel";
 import FilterPanel from "./FilterPanel";
 import { type FilterConfig } from "./FilterPanel"; 
+import React from "react";
 
 interface TableUIProps {
   baseName: string;
@@ -43,10 +44,13 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   const [showCreateViewForm, setShowCreateViewForm] = useState<boolean>(false);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState("");
   
   const [activeView, setActiveView] = useState<number | null>(null);
 
   const [pendingViewSelection, setPendingViewSelection] = useState<string | null>(null);
+
+  const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
   const utils = api.useUtils();
 
@@ -134,13 +138,22 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
 
   useEffect(() => {
   if (pendingViewSelection && viewsData) {
-    const newView = viewsData.find(view => view.name === pendingViewSelection);
-    if (newView) {
-      handleViewClick(newView);
-      setPendingViewSelection(null); // Clear the pending selection
+      const newView = viewsData.find(view => view.name === pendingViewSelection);
+      if (newView) {
+        handleViewClick(newView);
+        setPendingViewSelection(null); // Clear the pending selection
+      }
     }
-  }
-}, [viewsData, pendingViewSelection]);
+  }, [viewsData, pendingViewSelection]);
+
+  useEffect(() => {
+    
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, []);
 
   const handleViewClick = (view: NonNullable<typeof viewsData>[0]) => {
   setActiveView(view.id);
@@ -224,7 +237,15 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   };
 
   const handleSearch = (query: string) => {
-    console.log("Searching for:", query);
+    setSearchInput(query);
+
+    if(debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    debounceTimeout.current = setTimeout(() => {
+      setSearchQuery(query);
+    }, 500);
   };
 
   if (tablesLoading || !tableData || tableData.length === 0) {
@@ -413,8 +434,8 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
           <div className="flex items-center gap-2">
             <input
               type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search..."
               className="px-3 py-1 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -465,10 +486,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
 
                 <button
                   onClick={handleCreateView}
-                  disabled={!newViewName.trim() || ( 
-                    !searchQuery && 
-                    filterConfigs.length === 0 && 
-                    sortConfigs.length === 0) || createViewMutation.isPending
+                  disabled={!newViewName.trim() || createViewMutation.isPending
                   }
                   className="ml-2 px-2 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >

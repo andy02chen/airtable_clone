@@ -24,12 +24,12 @@ export function AddColumnButton({ onAdd }: { onAdd: (name: string, type: "TEXT" 
           <input
             type="text"
             placeholder="Column name"
-            className="w-full px-2 py-1 mb-2 border rounded"
+            className="w-full px-2 py-1 mb-2 border rounded font-normal"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <select
-            className="w-full px-2 py-1 mb-2 border rounded"
+            className="w-full px-2 py-1 mb-2 border rounded font-normal"
             value={type}
             onChange={(e) => setType(e.target.value as "TEXT" | "NUMBER")}
           >

@@ -1,8 +1,6 @@
-Cannot save configs - filter and sort
+[X] would be good to add a small debounce when using the search bar so it doesnt trigger the search instantly
+[X] i cant create a view for some reason, does airtable let u create views with no sort/filter? i think it does
+[X] less bold in Add column
 
-[ ] I want to be able to create a 'view' of a table and save the following configurations
-  [X] Filters on columns
-  [X] Sort
-  [X] Can search through 
-
-[ ] The ultimate goal - if there are 1m rows, it can still load without an issue!
+[ ] also i refreshed and my filters/sort didn’t save, does it save in airtable i forgot (Store default view for each table)
+[ ] Save table number maybe
