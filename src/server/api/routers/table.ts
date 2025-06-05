@@ -38,10 +38,10 @@ export const tableRouter = createTRPCRouter({
     return views;
   }),
 
-  createView: protectedProcedure
+  editView: protectedProcedure
   .input(z.object({ 
+      id: z.number(),
       tableId: z.number(),
-      name: z.string().min(1),
       searchQuery: z.string().optional(),
       sortConfig: z.array(z.object({
         columnId: z.number(),
@@ -70,54 +70,118 @@ export const tableRouter = createTRPCRouter({
         throw new Error("Table not found or access denied");
       }
 
-      const view = await ctx.db.$transaction(async (tx) => {
-        // Create the main view record
-        const newView = await tx.view.create({
-          data: {
-            tableId: input.tableId,
-            name: input.name,
-            searchQuery: input.searchQuery ?? null
+      const view = await ctx.db.view.findFirst({
+        where: {
+          id: input.id,
+          tableId: input.tableId
+        }
+      })
+
+      if (!view) {
+        throw new Error("View not found or access denied");
+      }
+
+      const updatedView = await ctx.db.$transaction(async (tx) => {
+      // Update the main view properties
+      const view = await tx.view.update({
+        where: {
+          id: input.id
+        },
+        data: {
+          searchQuery: input.searchQuery ?? null
+        }
+      });
+
+      if (input.sortConfig) {
+        await tx.sortConfig.deleteMany({
+          where: {
+            viewId: input.id
           }
         });
 
-        // Create sort configurations if provided
-        if (input.sortConfig && input.sortConfig.length > 0) {
+        if (input.sortConfig.length > 0) {
           await tx.sortConfig.createMany({
             data: input.sortConfig.map(sort => ({
-              viewId: newView.id,
+              viewId: input.id,
               columnId: sort.columnId,
               direction: sort.direction,
               priority: sort.priority
             }))
           });
         }
+      }
 
-        // Create filter configurations if provided
-        if (input.filterConfig && input.filterConfig.length > 0) {
+      if (input.filterConfig) {
+        await tx.filterConfig.deleteMany({
+          where: {
+            viewId: input.id
+          }
+        });
+
+        if (input.filterConfig.length > 0) {
           await tx.filterConfig.createMany({
             data: input.filterConfig.map(filter => ({
-              viewId: newView.id,
+              viewId: input.id,
               columnId: filter.columnId,
               operator: filter.operator,
               value: filter.value
             }))
           });
         }
+      }
 
-        // Return the complete view with its configurations
-        return await tx.view.findUnique({
-          where: { id: newView.id },
-          include: {
-            sortConfig: {
-              orderBy: { priority: 'asc' }
-            },
-            filterConfig: true
-          }
-        });
+      return await tx.view.findUnique({
+        where: { id: input.id },
+        include: {
+          sortConfig: {
+            orderBy: { priority: 'asc' }
+          },
+          filterConfig: true
+        }
       });
+    });
 
-      return view;
+    return updatedView;
     }),
+
+  createView: protectedProcedure
+  .input(z.object({ 
+    tableId: z.number(),
+    name: z.string().min(1),
+    searchQuery: z.string().optional().nullable(),
+  }))
+  .mutation(async ({ ctx, input }) => {
+    const userId = ctx.session.user.id;
+
+    // Verify table access
+    const table = await ctx.db.table.findFirst({
+      where: {
+        id: input.tableId,
+        base: {
+          userId: userId
+        }
+      }
+    });
+
+    if (!table) {
+      throw new Error("Table not found or access denied");
+    }
+
+    // Create just the view with no configurations
+    const view = await ctx.db.view.create({
+      data: {
+        tableId: input.tableId,
+        name: input.name,
+        searchQuery: input.searchQuery ?? null
+      },
+      include: {
+        sortConfig: true,
+        filterConfig: true
+      }
+    });
+
+    return view;
+  }),
 
   create: protectedProcedure
     .input(z.object({ 

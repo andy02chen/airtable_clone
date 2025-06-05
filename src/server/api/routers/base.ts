@@ -65,8 +65,14 @@ export const baseRouter = createTRPCRouter({
         }
       }
 
-      // Bulk insert using createMany (good enough here)
       await tx.cell.createMany({ data: cellsData });
+
+      await tx.view.create({
+        data: {
+          tableId: table.id,
+          name: "Default View",
+        }
+      });
 
       return base;
     });

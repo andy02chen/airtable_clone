@@ -48,7 +48,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   
   const [activeView, setActiveView] = useState<number | null>(null);
 
-  const [pendingViewSelection, setPendingViewSelection] = useState<string | null>(null);
+  const [pendingViewSelection, setPendingViewSelection] = useState<string | null>("Default View");
 
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -103,19 +103,35 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
 
   // Create table mutation
   const createTableMutation = api.table.create.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (newTable) => {
       // Refetch tables after successful creation
       await utils.table.getByBaseId.invalidate({ baseId: baseID });
-      setShowCreateForm(false);
-      setNewTableName("");
-      // Set active tab to the newly created table (it will be the last one)
+
+      await createViewMutation.mutateAsync({
+        tableId: newTable.id,
+        name: "Default View"
+      });
+      
       if (tableData) {
         setActiveTab(tableData.length);
       }
+
+      setShowCreateForm(false);
+      setNewTableName("");
+      setPendingViewSelection("Default View");
     },
     onError: (error) => {
       console.error("Failed to create table:", error);
       // You might want to show a toast notification here
+    }
+  });
+
+  const editViewMutation = api.table.editView.useMutation({
+    onSuccess: async () => {
+      await utils.table.getViews.invalidate({ tableId: currentTableId });
+    },
+    onError: (error) => {
+      console.error("Failed to update view:", error);
     }
   });
 
@@ -134,6 +150,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     setSortConfigs([]);
     setFilterConfigs([]);
     setActiveView(null);
+    setPendingViewSelection("Default View");
   }, [activeTab]);
 
   useEffect(() => {
@@ -199,21 +216,19 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
       createViewMutation.mutate({
         tableId: currentTableId,
         name: newViewName.trim(),
-        searchQuery: searchQuery.trim() || undefined,
-        sortConfig: sortConfigs.length > 0 ? sortConfigs : undefined,
-        filterConfig: filterConfigs.length > 0 ? filterConfigs : undefined
+        searchQuery: undefined
       });
     }
   };
 
   const handleCreateTable = () => {
-    if (newTableName.trim()) {
-      createTableMutation.mutate({
-        baseId: baseID,
-        name: newTableName.trim()
-      });
-    }
-  };
+  if (newTableName.trim()) {
+    createTableMutation.mutate({
+      baseId: baseID,
+      name: newTableName.trim()
+    });
+  }
+};
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -391,9 +406,19 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
                 name: col.name,
                 type: col.type === "TEXT" ? "text" : "number",
               }))}
-              onDone={(filterConfigs) => {
+              onDone={async(filterConfigs) => {
                 setFilterConfigs(filterConfigs);
                 setShowFilterPanel(false);
+                if(activeView && currentTableId) {
+                  console.log(activeView, currentTableId);
+                  await editViewMutation.mutateAsync({
+                    id: activeView,
+                    tableId: currentTableId,
+                    searchQuery: searchQuery,
+                    sortConfig: sortConfigs,
+                    filterConfig: filterConfigs
+                  });
+                }
               }}
               onClose={() => setShowFilterPanel(false)}
               initialFilterConfigs={filterConfigs}
@@ -419,9 +444,19 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
                 name: col.name,
                 type: col.type === "TEXT" ? "text" : "number",
               }))}
-              onDone={(newSortConfigs) => {
+              onDone={async (newSortConfigs) => {
                 setSortConfigs(newSortConfigs);
                 setShowSortPanel(false);
+                if(activeView && currentTableId) {
+                  console.log(activeView, currentTableId);
+                  await editViewMutation.mutateAsync({
+                    id: activeView,
+                    tableId: currentTableId,
+                    searchQuery: searchQuery,
+                    sortConfig: newSortConfigs,
+                    filterConfig: filterConfigs
+                  });
+                }
               }}
               onClose={() => setShowSortPanel(false)}
               initialSortConfigs={sortConfigs}
@@ -430,7 +465,8 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
           )}
         </div>
 
-        <div className="absolute left-1/2 transform -translate-x-1/2">
+
+        <div className="flex ml-auto">
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -440,9 +476,6 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
               className="px-3 py-1 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-        </div>
-
-        <div className="ml-auto">
           <button className="px-4 py-1 rounded hover:bg-gray-100 transition cursor-pointer disabled:cursor-not-allowed"
           onClick={() => {
             if(currentTableId) {
@@ -507,7 +540,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
 
             <div className="w-full h-px bg-gray-200 my-2"></div>
             <div>
-              <div
+              {/* <div
                 className={`p-2 hover:bg-gray-100 cursor-pointer rounded transition-colors ${
                   activeView === null ? "border-l-4 border-blue-500 bg-gray-50" : ""
                 }`}
@@ -519,7 +552,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
                 }}
               >
                 Default View
-              </div>
+              </div> */}
               
               {viewsData?.map((view) => (
                 <div
