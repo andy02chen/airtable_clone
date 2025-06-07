@@ -263,7 +263,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     }, 500);
   };
 
-  if (tablesLoading || !tableData || tableData.length === 0 || editViewMutation.isPending) {
+  if (tablesLoading || !tableData || tableData.length === 0) {
     return(
       <div className='h-screen w-screen flex items-center justify-center'>
         <Loading/>
@@ -577,6 +577,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
               sortConfigs={sortConfigs}
               filterConfigs={filterConfigs}
               searchQuery={searchQuery}
+              isPending={editViewMutation.isPending}
             />
           )}
         </div>

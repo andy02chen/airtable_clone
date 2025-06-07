@@ -25,6 +25,7 @@ type TableCellsProps = {
   sortConfigs?: SortConfig[];
   filterConfigs?: FilterConfig[];
   searchQuery?: string;
+  isPending: boolean;
 };
 
 type TableData = Record<string, string | number | null>;
@@ -108,7 +109,7 @@ function CellInput({
   );
 }
 
-export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sortConfigs, filterConfigs, searchQuery }: TableCellsProps) {
+export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sortConfigs, filterConfigs, searchQuery, isPending }: TableCellsProps) {
   const utils = api.useUtils();
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
@@ -344,7 +345,7 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
     };
   }, []);
 
-  if (isLoading || createRowMutation.isPending || createColumnMutation.isPending) {
+  if (isLoading || createRowMutation.isPending || createColumnMutation.isPending || isPending) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loading />
