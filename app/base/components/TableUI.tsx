@@ -263,7 +263,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     }, 500);
   };
 
-  if (tablesLoading || !tableData || tableData.length === 0) {
+  if (tablesLoading || !tableData || tableData.length === 0 || editViewMutation.isPending) {
     return(
       <div className='h-screen w-screen flex items-center justify-center'>
         <Loading/>
