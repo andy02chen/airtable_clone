@@ -9,7 +9,7 @@ interface Column {
 interface ColumnVisibilityPanelProps {
   columns: Column[];
   hiddenColumns: Set<string>;
-  onToggleColumn: (columnId: string) => void;
+  onToggleColumn: (columns: Set<string>) => void;
   onClose: () => void;
 }
 
@@ -23,15 +23,10 @@ export default function ColumnVisibilityPanel({
   
   const handleToggleAll = () => {
     if (hiddenColumns.size === 0) {
-      // Hide all columns
-      columns.forEach(column => {
-        onToggleColumn(`column_${column.id}`);
-      });
+      const allColumnIds = new Set(columns.map(column => `column_${column.id}`));
+      onToggleColumn(allColumnIds);
     } else {
-      // Show all columns
-      hiddenColumns.forEach(columnId => {
-        onToggleColumn(columnId);
-      });
+      onToggleColumn(new Set<string>());
     }
   };
 
@@ -82,7 +77,15 @@ export default function ColumnVisibilityPanel({
                     type="checkbox"
                     id={columnId}
                     checked={isVisible}
-                    onChange={() => onToggleColumn(columnId)}
+                    onChange={() => {
+                      const newSet = new Set(hiddenColumns);
+                      if (newSet.has(columnId)) {
+                        newSet.delete(columnId);
+                      } else {
+                        newSet.add(columnId);
+                      }
+                      onToggleColumn(newSet);
+                    }}
                     className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
                   />
                   <label

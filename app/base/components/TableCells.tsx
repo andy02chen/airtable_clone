@@ -21,7 +21,6 @@ type SortConfig = {
 type TableCellsProps = {
   tableId: number;
   hiddenColumns: Set<string>;
-  onToggleColumn: (columnId: string) => void;
   sortConfigs?: SortConfig[];
   filterConfigs?: FilterConfig[];
   searchQuery?: string;
@@ -109,7 +108,7 @@ function CellInput({
   );
 }
 
-export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sortConfigs, filterConfigs, searchQuery, isPending }: TableCellsProps) {
+export default function TableCells({ tableId, hiddenColumns,  sortConfigs, filterConfigs, searchQuery, isPending }: TableCellsProps) {
   const utils = api.useUtils();
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const tableContainerRef = React.useRef<HTMLDivElement>(null);

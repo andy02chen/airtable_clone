@@ -209,6 +209,13 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
   } else {
     setFilterConfigs([]);
   }
+
+  if(view.hiddenColumns && view.hiddenColumns.length > 0) {
+    const hiddenColumns = new Set(view.hiddenColumns.map(col => col.column));
+    setHiddenColumns(hiddenColumns);
+  } else {
+    setHiddenColumns(new Set());
+  }
 };
 
   const handleCreateView = () => {
@@ -239,16 +246,20 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
     }
   };
 
-  const handleToggleColumn = (columnId: string) => {
-    setHiddenColumns(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(columnId)) {
-        newSet.delete(columnId);
-      } else {
-        newSet.add(columnId);
-      }
-      return newSet;
-    });
+  const handleToggleColumn = async (columns: Set<string>) => {
+
+    setHiddenColumns(columns);
+
+    if(activeView && currentTableId) {
+      await editViewMutation.mutateAsync({
+        id: activeView,
+        tableId: currentTableId,
+        searchQuery: searchQuery,
+        sortConfig: sortConfigs,
+        filterConfig: filterConfigs,
+        hiddenColumns: columns
+      });
+    }
   };
 
   const handleSearch = (query: string) => {
@@ -416,7 +427,8 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
                     tableId: currentTableId,
                     searchQuery: searchQuery,
                     sortConfig: sortConfigs,
-                    filterConfig: filterConfigs
+                    filterConfig: filterConfigs,
+                    hiddenColumns: hiddenColumns,
                   });
                 }
               }}
@@ -454,7 +466,8 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
                     tableId: currentTableId,
                     searchQuery: searchQuery,
                     sortConfig: newSortConfigs,
-                    filterConfig: filterConfigs
+                    filterConfig: filterConfigs,
+                    hiddenColumns: hiddenColumns
                   });
                 }
               }}
@@ -539,21 +552,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
             )}
 
             <div className="w-full h-px bg-gray-200 my-2"></div>
-            <div>
-              {/* <div
-                className={`p-2 hover:bg-gray-100 cursor-pointer rounded transition-colors ${
-                  activeView === null ? "border-l-4 border-blue-500 bg-gray-50" : ""
-                }`}
-                onClick={() => {
-                  setActiveView(null);
-                  setSearchQuery('');
-                  setFilterConfigs([]);
-                  setSortConfigs([]);
-                }}
-              >
-                Default View
-              </div> */}
-              
+            <div>              
               {viewsData?.map((view) => (
                 <div
                   key={view.id}
@@ -573,7 +572,6 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
             <TableCells 
               tableId={currentTableId}
               hiddenColumns={hiddenColumns}
-              onToggleColumn={handleToggleColumn}
               sortConfigs={sortConfigs}
               filterConfigs={filterConfigs}
               searchQuery={searchQuery}

@@ -30,7 +30,8 @@ export const tableRouter = createTRPCRouter({
         sortConfig: {
           orderBy: { priority: 'asc' }
         },
-        filterConfig: true
+        filterConfig: true,
+        hiddenColumns: true,
       },
       orderBy: { id: 'asc' }
     });
@@ -52,7 +53,10 @@ export const tableRouter = createTRPCRouter({
         columnId: z.number(),
         operator: z.enum(['gt', 'lt', 'not_empty', 'empty', 'contains', 'not_contains', 'eq']),
         value: z.string()
-      })).optional()
+      })).optional(),
+      hiddenColumns: z.set(
+        z.string()
+      ).optional()
     }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
@@ -125,6 +129,23 @@ export const tableRouter = createTRPCRouter({
               columnId: filter.columnId,
               operator: filter.operator,
               value: filter.value
+            }))
+          });
+        }
+      }
+
+      if (input.hiddenColumns) {
+        await tx.hiddenColumn.deleteMany({
+          where: {
+            viewId: input.id
+          }
+        });
+
+        if (input.hiddenColumns.size > 0) {
+          await tx.hiddenColumn.createMany({
+            data: Array.from(input.hiddenColumns).map(column => ({
+              viewId: input.id,
+              column: column
             }))
           });
         }

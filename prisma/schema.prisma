@@ -75,8 +75,19 @@ model View {
   searchQuery String?
   sortConfig  SortConfig[]
   filterConfig FilterConfig[]
+  hiddenColumns HiddenColumn[]
   
   @@index([tableId])
+}
+
+model HiddenColumn {
+  id        Int     @id @default(autoincrement())
+  viewId    Int
+  view      View    @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  column  String
+  
+  @@unique([viewId, column])
+  @@index([viewId])
 }
 
 model SortConfig {
