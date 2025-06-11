@@ -357,7 +357,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
       </div>
 
       {/* Buttons */}
-      <div className={`relative flex items-center px-4 py-2 border-b bg-white text-gray-700 justify-between`}>
+      <div className={`relative flex items-center px-4 py-2 border-b bg-white text-gray-700 justify-between gap-4`}>
         <button className={`px-4 py-1 rounded border-2 transition cursor-pointer ${
           showViews
             ? 'bg-gray-200 text-black hover:border-gray-300'

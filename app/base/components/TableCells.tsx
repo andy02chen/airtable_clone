@@ -104,7 +104,7 @@ function CellInput({
       value={localValue}
       onChange={handleChange}
       onBlur={handleBlur}
-      className="w-full bg-transparent border-none outline-none px-2 py-1 focus:bg-blue-50"
+      className="w-full bg-transparent border-none outline-none px-3 py-2 focus:bg-blue-50 focus:"
     />
   );
 }
@@ -357,7 +357,7 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
     <div 
       ref={tableContainerRef}
     >
-    <table className="border border-gray-300 select-none">
+    <table className="border border-gray-300 select-none text-center">
       <thead className="bg-gray-100">
         {table.getHeaderGroups().map(headerGroup => (
           <tr key={headerGroup.id}>
@@ -392,7 +392,7 @@ export default function TableCells({ tableId, hiddenColumns, onToggleColumn, sor
             {row.getVisibleCells().map(cell => (
               <td
                 key={cell.id}
-                className="border border-gray-300 px-3 py-2 text-sm text-gray-800"
+                className="border border-gray-300 text-sm text-gray-800"
               >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </td>
