@@ -11,13 +11,15 @@ interface ColumnVisibilityPanelProps {
   hiddenColumns: Set<string>;
   onToggleColumn: (columns: Set<string>) => void;
   onClose: () => void;
+  isPending: boolean;
 }
 
 export default function ColumnVisibilityPanel({ 
   columns, 
   hiddenColumns, 
   onToggleColumn, 
-  onClose 
+  onClose,
+  isPending
 }: ColumnVisibilityPanelProps) {
   const visibleCount = columns.length - hiddenColumns.size;
   
@@ -87,6 +89,7 @@ export default function ColumnVisibilityPanel({
                       onToggleColumn(newSet);
                     }}
                     className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                    disabled={isPending}
                   />
                   <label
                     htmlFor={columnId}

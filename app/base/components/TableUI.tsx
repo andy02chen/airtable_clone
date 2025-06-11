@@ -394,6 +394,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
               hiddenColumns={hiddenColumns}
               onToggleColumn={handleToggleColumn}
               onClose={() => setShowColumnPanel(false)}
+              isPending={editViewMutation.isPending}
             />
             </div>
           )}
