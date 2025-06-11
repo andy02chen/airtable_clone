@@ -59,6 +59,7 @@ export default function ColumnVisibilityPanel({
           <button
             onClick={handleToggleAll}
             className="text-sm text-blue-600 hover:text-blue-800  cursor-pointer"
+            disabled={isPending}
           >
             {hiddenColumns.size === 0 ? 'Hide all' : 'Show all'}
           </button>
