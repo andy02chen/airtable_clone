@@ -435,6 +435,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
               }}
               onClose={() => setShowFilterPanel(false)}
               initialFilterConfigs={filterConfigs}
+              isPending={editViewMutation.isPending}
               />
             </div>
           )}
@@ -474,6 +475,7 @@ export default function TableUI({ baseName, baseID } : TableUIProps) {
               }}
               onClose={() => setShowSortPanel(false)}
               initialSortConfigs={sortConfigs}
+              isPending={editViewMutation.isPending}
             />
             </div>
           )}

@@ -11,9 +11,10 @@ type SortPanelProps = {
   onDone: (sortConfigs: SortConfig[]) => void;
   onClose: () => void;
   initialSortConfigs?: SortConfig[];
+  isPending: boolean;
 };
 
-export default function SortPanel({ columns, onDone, onClose, initialSortConfigs = [] }: SortPanelProps) {
+export default function SortPanel({ columns, onDone, onClose, initialSortConfigs = [], isPending}: SortPanelProps) {
   const [sortConfigs, setSortConfigs] = useState<SortConfig[]>(initialSortConfigs);
   const [selectedColumnId, setSelectedColumnId] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -115,6 +116,7 @@ export default function SortPanel({ columns, onDone, onClose, initialSortConfigs
                         onClick={() => removeSortConfig(config.columnId)}
                         className="px-1 py-1 text-xs text-red-600 hover:text-red-800 cursor-pointer"
                         title="Remove"
+                        disabled={isPending}
                       >
                         ×
                       </button>
@@ -161,6 +163,7 @@ export default function SortPanel({ columns, onDone, onClose, initialSortConfigs
                   <button
                     onClick={addSortConfig}
                     className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
+                    disabled={isPending}
                   >
                     Add
                   </button>
@@ -180,6 +183,7 @@ export default function SortPanel({ columns, onDone, onClose, initialSortConfigs
                 onClose();
               }}
               className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
+              disabled={isPending}
             >
               Clear All
             </button>
@@ -196,6 +200,7 @@ export default function SortPanel({ columns, onDone, onClose, initialSortConfigs
                   onClose();
                 }}
                 className="px-4 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
+                disabled={isPending}
               >
                 Apply Sort
               </button>

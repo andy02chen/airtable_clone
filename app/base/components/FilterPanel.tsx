@@ -11,9 +11,10 @@ type FilterPanelProps = {
   onDone: (filterConfigs: FilterConfig[]) => void;
   onClose: () => void;
   initialFilterConfigs?: FilterConfig[];
+  isPending: boolean;
 }
 
-export default function FilterPanel({ columns, onDone, onClose, initialFilterConfigs = [] }: FilterPanelProps) {
+export default function FilterPanel({ columns, onDone, onClose, initialFilterConfigs = [], isPending }: FilterPanelProps) {
   const [filterConfigs, setFilterConfigs] = useState<FilterConfig[]>(initialFilterConfigs);
   const [selectedColumnId, setSelectedColumnId] = useState<number | null>(null);
   const [selectedOperator, setSelectedOperator] = useState<FilterConfig['operator'] | ''>('');
@@ -150,6 +151,7 @@ export default function FilterPanel({ columns, onDone, onClose, initialFilterCon
                       onClick={() => removeFilterConfig(config.columnId)}
                       className="px-1 py-1 text-xs text-red-600 hover:text-red-800 cursor-pointer"
                       title="Remove"
+                      disabled={isPending}
                     >
                       ×
                     </button>
@@ -234,6 +236,7 @@ export default function FilterPanel({ columns, onDone, onClose, initialFilterCon
                 onClose();
               }}
               className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 cursor-pointer"
+              disabled={isPending}
             >
               Clear All
             </button>
@@ -250,6 +253,7 @@ export default function FilterPanel({ columns, onDone, onClose, initialFilterCon
                   onClose();
                 }}
                 className="px-4 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700  cursor-pointer"
+                disabled={isPending}
               >
                 Apply Filters
               </button>
